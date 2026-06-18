@@ -27,6 +27,7 @@ pub fn collectToolingPaths(b: *std.Build) !steps.FmtPaths {
         try utils.collectFiles(b, include, .{ .allowed_extensions = &.{".hh"} }),
         try utils.collectFiles(b, src, .{ .allowed_extensions = &.{".cc"} }),
         try utils.collectFiles(b, tests, .{ .allowed_extensions = &.{ ".hh", ".cc" } }),
+        try utils.collectFiles(b, tools, .{ .allowed_extensions = &.{ ".hh", ".cc", ".h" } }),
     });
 
     return .{ .zig = zig_paths, .cxx = cxx_paths };

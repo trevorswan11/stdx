@@ -43,7 +43,7 @@ class TestTimerListener : public Catch::EventListenerBase {
     auto testCaseEnded(const Catch::TestCaseStats&) -> void override { timer_.reset(); }
 
   private:
-    std::string             name_;
+    std::string        name_;
     NullableBox<Timer> timer_;
 };
 
