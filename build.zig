@@ -315,7 +315,7 @@ pub fn buildStrappedTest(b: *std.Build, config: struct {
     config_headers: []const *std.Build.Step.ConfigHeader = &.{},
     executable_config: utils.CreateExecutableConfig,
     /// The builder who has stdx as a dependency, defaulting to `b`
-    asking_builder: ?*std.Build,
+    asking_builder: ?*std.Build = null,
 }) *std.Build.Step.Compile {
     const cxx_files = std.mem.concat(b.allocator, []const u8, &.{
         config.cxx_files,
