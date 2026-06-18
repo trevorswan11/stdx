@@ -312,6 +312,7 @@ pub fn buildStrappedTest(b: *std.Build, config: struct {
     /// Catch2 and libstdx are added automatically
     link_libraries: []const *std.Build.Step.Compile = &.{},
     include_paths: []const std.Build.LazyPath = &.{},
+    config_headers: []const *std.Build.Step.ConfigHeader = &.{},
     executable_config: utils.CreateExecutableConfig,
     /// The builder who has stdx as a dependency, defaulting to `b`
     asking_builder: ?*std.Build,
@@ -336,6 +337,7 @@ pub fn buildStrappedTest(b: *std.Build, config: struct {
         .optimize = config.optimize,
         .zig_main = b.path(ProjectPaths.harness ++ "main.zig"),
         .include_paths = config.include_paths,
+        .config_headers = config.config_headers,
         .cxx = .{
             .files = cxx_files,
             .flags = config.cxx_flags,
