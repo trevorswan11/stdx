@@ -31,14 +31,11 @@ pub fn build(b: *std.Build) !void {
     try compiler_flags.append(b.allocator, "-DMAGIC_ENUM_RANGE_MAX=255");
     const dist_flags: []const []const u8 = &.{ "-DNDEBUG", "-DSTDX_DIST" };
 
-    var package_flags = try compiler_flags.clone(b.allocator);
-    try package_flags.appendSlice(b.allocator, dist_flags);
-
     if (b.option(bool, "profile", "Enable chromium tracing") orelse false) {
         try compiler_flags.append(b.allocator, "-DSTDX_PROFILE");
     }
 
-    try compiler_flags.appendSlice(b.allocator, &.{
+    if (run_cdb_gen) try compiler_flags.appendSlice(b.allocator, &.{
         "-gen-cdb-fragment-path",
         b.cache_root.join(b.allocator, &.{CDBGenerator.cdb_frags_dirname}) catch @panic("OOM"),
     });
@@ -206,6 +203,9 @@ fn buildStdx(b: *std.Build, config: struct {
         });
     }
     libstdx.installLibraryHeaders(fmt_dep.artifact);
+    libstdx.installHeadersDirectory(b.path(ProjectPaths.include), "", .{
+        .include_extensions = &.{".hh"},
+    });
 
     return libstdx;
 }
@@ -221,37 +221,29 @@ fn addArtifacts(b: *std.Build, config: struct {
     building_for_dep: bool = true,
 }) !struct {
     libstdx: *std.Build.Step.Compile,
-    compressor: *std.Build.Step.Compile,
     tests: ?TestArtifacts,
     cppcheck: ?*std.Build.Step.Compile,
 } {
-    const target = config.target;
     const libstdx = try buildStdx(b, .{
         .optimize = config.optimize,
-        .target = target,
+        .target = config.target,
         .cxx_flags = config.cxx_flags,
     });
 
     if (config.auto_install) b.installArtifact(libstdx);
     if (config.cdb_steps) |cdb_steps| try cdb_steps.append(b.allocator, &libstdx.step);
-    const compressor = buildCompressor(b);
 
     var tests: ?TestArtifacts = null;
     if (!config.building_for_dep) {
         const test_install_dir: ?[]const u8 = if (config.auto_install) "tests" else null;
-        const harness_main = b.path(ProjectPaths.harness ++ "main.zig");
-        const catch2_dep = catch2.build(b, .{
-            .target = target,
-            .optimize = config.optimize,
-        });
 
         // The test harness has standalone tests of its own
         const harness_tests = b.addTest(.{
             .name = "harness",
             .root_module = b.createModule(.{
-                .root_source_file = harness_main,
+                .root_source_file = b.path(ProjectPaths.harness ++ "main.zig"),
                 .optimize = config.optimize,
-                .target = target,
+                .target = config.target,
                 .link_libc = true,
             }),
         });
@@ -265,30 +257,25 @@ fn addArtifacts(b: *std.Build, config: struct {
             config.install_tests_only,
         );
 
-        // Stdx's tests depend on the test runner but not LLVM
-        const stdx_tests = utils.createExecutable(b, .{
-            .target = target,
+        const stdx_tests = buildStrappedTest(b, .{
+            .target = config.target,
             .optimize = config.optimize,
-            .zig_main = harness_main,
+            .libstdx = libstdx,
+            .cxx_files = try utils.collectFiles(b, ProjectPaths.tests, .{}),
+            .cxx_flags = config.cxx_flags,
             .include_paths = &.{
                 b.path(ProjectPaths.include),
                 b.path(ProjectPaths.tests),
             },
-            .cxx = .{
-                .files = try utils.collectFiles(b, ProjectPaths.tests, .{
-                    .extra_files = &.{ProjectPaths.harness ++ "runner.cc"},
-                }),
-                .flags = config.cxx_flags,
-            },
-            .link_libraries = &.{ libstdx, catch2_dep.artifact },
-        }, .{
-            .name = "stdx",
-            .behavior = config.behavior orelse .{
-                .installable = .{
-                    .cmd_name = "test-stdx",
-                    .cmd_desc = "Build/run stdx's unit tests",
-                    .install_dir = test_install_dir,
-                    .install_only = config.install_tests_only,
+            .executable_config = .{
+                .name = "stdx",
+                .behavior = config.behavior orelse .{
+                    .installable = .{
+                        .cmd_name = "test-stdx",
+                        .cmd_desc = "Build/run stdx's unit tests",
+                        .install_dir = test_install_dir,
+                        .install_only = config.install_tests_only,
+                    },
                 },
             },
         });
@@ -301,16 +288,58 @@ fn addArtifacts(b: *std.Build, config: struct {
     }
 
     const cppcheck_dep: ?Dependency = if (!config.building_for_dep) try cppcheck.build(b, .{
-        .target = target,
+        .target = config.target,
         .optimize = .ReleaseFast,
     }) else null;
 
     return .{
         .libstdx = libstdx,
-        .compressor = compressor,
         .tests = tests,
         .cppcheck = if (cppcheck_dep) |dep| dep.artifact else null,
     };
+}
+
+/// Build's a zig-harness-driven catch2 test artifact
+///
+/// Call this with the dependencies builder
+pub fn buildStrappedTest(b: *std.Build, config: struct {
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    libstdx: *std.Build.Step.Compile,
+    /// The test hook is added automatically
+    cxx_files: []const []const u8,
+    cxx_flags: []const []const u8,
+    /// Catch2 and libstdx are added automatically
+    link_libraries: []const *std.Build.Step.Compile = &.{},
+    include_paths: []const std.Build.LazyPath = &.{},
+    executable_config: utils.CreateExecutableConfig,
+}) *std.Build.Step.Compile {
+    const cxx_files = std.mem.concat(b.allocator, []const u8, &.{
+        config.cxx_files,
+        &.{ProjectPaths.harness ++ "runner.cc"},
+    }) catch @panic("OOM");
+
+    const catch2_dep = catch2.build(b, .{
+        .target = config.target,
+        .optimize = config.optimize,
+    });
+
+    const link_libraries = std.mem.concat(b.allocator, *std.Build.Step.Compile, &.{
+        config.link_libraries,
+        &.{ config.libstdx, catch2_dep.artifact },
+    }) catch @panic("OOM");
+
+    return utils.createExecutable(b, .{
+        .target = config.target,
+        .optimize = config.optimize,
+        .zig_main = b.path(ProjectPaths.harness ++ "main.zig"),
+        .include_paths = config.include_paths,
+        .cxx = .{
+            .files = cxx_files,
+            .flags = config.cxx_flags,
+        },
+        .link_libraries = link_libraries,
+    }, config.executable_config);
 }
 
 fn addTooling(b: *std.Build, config: struct {
@@ -380,7 +409,7 @@ fn addFmtStep(b: *std.Build, tooling_sources: []const []const u8) !void {
     fmt_check_step.dependOn(&build_fmt_check.step);
 }
 
-fn buildCompressor(b: *std.Build) *std.Build.Step.Compile {
+pub fn buildCompressor(b: *std.Build) *std.Build.Step.Compile {
     const libarchive_dep = libarchive.build(b, .{
         .target = b.graph.host,
         .optimize = .ReleaseFast,
