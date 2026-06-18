@@ -12,6 +12,7 @@ pub const Dependency = @import("third-party/Dependency.zig");
 pub const KcovBuilder = @import("third-party/kcov/KcovBuilder.zig");
 
 pub const utils = @import("build/utils.zig");
+pub const builders = @import("build/builders.zig");
 pub const cppcheck = @import("third-party/cppcheck.zig");
 pub const fmt = @import("third-party/fmt.zig");
 pub const catch2 = @import("third-party/catch2.zig");
@@ -241,7 +242,7 @@ fn addArtifacts(b: *std.Build, config: struct {
             config.install_tests_only,
         );
 
-        const stdx_tests = utils.buildStrappedTest(b, .{
+        const stdx_tests = builders.strappedTest(b, .{
             .target = config.target,
             .optimize = config.optimize,
             .libstdx = libstdx,
@@ -320,12 +321,15 @@ fn addTooling(b: *std.Build, config: struct {
 }
 
 fn addFmtStep(b: *std.Build, tooling_sources: []const []const u8) !void {
-    const zig_paths = try utils.collectFiles(b, "tools", .{
-        .allowed_extensions = &.{".zig"},
-        .extra_files = &.{
-            "build.zig",
-            "build.zig.zon",
-        },
+    const zig_paths = try std.mem.concat(b.allocator, []const u8, &.{
+        try utils.collectFiles(b, "build", .{
+            .allowed_extensions = &.{".zig"},
+            .extra_files = &.{
+                "build.zig",
+                "build.zig.zon",
+            },
+        }),
+        try utils.collectFiles(b, "tools", .{ .allowed_extensions = &.{".zig"} }),
     });
     const build_fmt = b.addFmt(.{ .paths = zig_paths });
     const build_fmt_check = b.addFmt(.{ .paths = zig_paths, .check = true });
