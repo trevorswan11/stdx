@@ -27,7 +27,7 @@ pub fn build(b: *std.Build) !void {
 
     const building_for_dep = b.option(bool, "building_for_dep", "Build for a dependency") orelse false;
     const run_cdb_gen = b.option(bool, "run_cdb_gen", "Run cdb generation") orelse true;
-    const skip_catch2 = b.option(bool, "skip_catch2", "Don't compile catch2 or any test artifacts") orelse false;
+    const packaging = b.option(bool, "packaging", "Don't compile catch2 or cppcheck") orelse false;
 
     const cdb_gen_opt: ?*CDBGenerator = if (run_cdb_gen) CDBGenerator.init(b) else null;
     var compiler_flags: std.ArrayList([]const u8) = .empty;
@@ -64,7 +64,7 @@ pub fn build(b: *std.Build) !void {
         .cdb_steps = if (run_cdb_gen) &cdb_steps else null,
         .install_tests_only = install_tests_only,
         .building_for_dep = building_for_dep,
-        .skip_catch2 = skip_catch2,
+        .packaging = packaging,
     });
 
     if (cdb_gen_opt) |cdb_gen| {
@@ -81,16 +81,21 @@ pub fn build(b: *std.Build) !void {
         b.installArtifact(kcov.kcov_exe);
     }
 
-    if (!building_for_dep) {
+    var cppcheck_art: ?*std.Build.Step.Compile = null;
+    if (!packaging) {
         const cppcheck_dep = try cppcheck.build(b, .{
             .target = b.graph.host,
             .optimize = .ReleaseFast,
         });
-        b.installArtifact(cppcheck_dep.artifact);
 
+        cppcheck_art = cppcheck_dep.artifact;
+        b.installArtifact(cppcheck_art.?);
+    }
+
+    if (!building_for_dep) {
         try addTooling(b, .{
             .cdb_gen = cdb_gen_opt,
-            .cppcheck = cppcheck_dep.artifact,
+            .cppcheck = cppcheck_art,
         });
 
         if (artifacts.tests) |tests| if (kcov_builder) |kcov| try steps.addCoverage(b, .{
@@ -226,7 +231,7 @@ fn addArtifacts(b: *std.Build, config: struct {
     behavior: ?utils.ExecutableBehavior = null,
     install_tests_only: bool = true,
     building_for_dep: bool = true,
-    skip_catch2: bool = false,
+    packaging: bool = false,
 }) !struct {
     libstdx: *std.Build.Step.Compile,
     tests: ?TestArtifacts,
@@ -240,7 +245,7 @@ fn addArtifacts(b: *std.Build, config: struct {
     if (config.cdb_steps) |cdb_steps| try cdb_steps.append(b.allocator, &libstdx.step);
 
     var catch2_dep: ?Dependency = null;
-    if (!config.skip_catch2) {
+    if (!config.packaging) {
         catch2_dep = catch2.build(b, .{
             .target = config.target,
             .optimize = config.optimize,
@@ -307,7 +312,7 @@ fn addArtifacts(b: *std.Build, config: struct {
 
 fn addTooling(b: *std.Build, config: struct {
     cdb_gen: ?*CDBGenerator,
-    cppcheck: *std.Build.Step.Compile,
+    cppcheck: ?*std.Build.Step.Compile,
 }) !void {
     const paths = try ProjectPaths.collectToolingPaths(b);
     _ = steps.addFmt(b, .{
@@ -321,11 +326,13 @@ fn addTooling(b: *std.Build, config: struct {
         cdb_step.dependOn(&cdb_gen.step);
         b.getInstallStep().dependOn(&cdb_gen.step);
 
-        const check_step = steps.addCppcheck(b, .{
-            .cppcheck = config.cppcheck,
-            .cdb_gen = cdb_gen,
-        });
-        check_step.dependOn(&cdb_gen.step);
+        if (config.cppcheck) |cppcheck_art| {
+            const check_step = steps.addCppcheck(b, .{
+                .cppcheck = cppcheck_art,
+                .cdb_gen = cdb_gen,
+            });
+            check_step.dependOn(&cdb_gen.step);
+        }
     }
 
     const counted_extensions = [_][]const u8{ ".cc", ".hh", ".zig" };
