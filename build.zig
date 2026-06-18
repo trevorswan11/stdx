@@ -83,6 +83,7 @@ pub fn build(b: *std.Build) !void {
 
     var cppcheck_art: ?*std.Build.Step.Compile = null;
     if (!packaging) {
+        // It never makes sense to build cppcheck for a package build
         const cppcheck_dep = try cppcheck.build(b, .{
             .target = b.graph.host,
             .optimize = .ReleaseFast,
@@ -91,6 +92,10 @@ pub fn build(b: *std.Build) !void {
         cppcheck_art = cppcheck_dep.artifact;
         b.installArtifact(cppcheck_art.?);
     }
+
+    // Always build compressor so it's accessible to the outside world
+    const compressor = builders.compressor(b);
+    b.installArtifact(compressor);
 
     if (!building_for_dep) {
         try addTooling(b, .{
