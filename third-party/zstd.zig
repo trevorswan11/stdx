@@ -7,8 +7,8 @@ const zstd = @import("sources/zstd.zig");
 
 /// Compiles zstd from source as a static library
 /// https://github.com/allyourcodebase/zstd
-pub fn build(b: *std.Build, config: Config) ?Dependency {
-    const upstream = b.lazyDependency("zstd", .{}) orelse return null;
+pub fn build(b: *std.Build, config: Config) Dependency {
+    const upstream = b.dependency("zstd", .{});
     const lib_path = upstream.path("lib");
 
     const mod = b.createModule(.{

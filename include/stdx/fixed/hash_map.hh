@@ -10,17 +10,17 @@
 
 #include <gsl/span>
 
-#include "assert.hh"
-#include "fixed/storage.hh"
-#include "hash.hh"
-#include "iterator.hh"
-#include "math.hh"
-#include "option.hh"
-#include "string.hh"
-#include "type_traits.hh"
-#include "types.hh"
+#include "stdx/assert.hh"
+#include "stdx/fixed/storage.hh"
+#include "stdx/hash.hh"
+#include "stdx/iterator.hh"
+#include "stdx/math.hh"
+#include "stdx/option.hh"
+#include "stdx/string.hh"
+#include "stdx/type_traits.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::fixed {
+namespace stdx::fixed {
 
 namespace detail {
 
@@ -151,7 +151,7 @@ class HashMapIterator {
 };
 
 // Heavily inspired by Zig's hash map implementation and trevor's C version:
-// https://github.com/trevorswan11/ghoti/blob/4577f3279f5ab09e32a13b8cacb044da686e64bd/src/util/containers/hash_map.c
+// https://github.com/trevorswan11/stdx/blob/4577f3279f5ab09e32a13b8cacb044da686e64bd/src/util/containers/hash_map.c
 template <typename Key, typename Value, usize Capacity, typename Hash, typename Equal>
     requires(is_power_of_two(Capacity))
 class HashMap {
@@ -272,9 +272,9 @@ class HashMap {
     // Returns a reference to the value at the key or none if the key is not present
     template <typename Self>
     [[nodiscard]] constexpr auto get_opt(this Self&& self, const Key& key) noexcept
-        -> opt::Option<traits::const_dispatch_t<Self, Value>&> {
+        -> Option<traits::const_dispatch_t<Self, Value>&> {
         if (const auto idx{self.index_of(key)}) { return *(self.value_data() + *idx); }
-        return opt::none;
+        return none;
     }
 
     // Removes the key value pair from the map, NOOP if not present
@@ -333,8 +333,8 @@ class HashMap {
     static constexpr auto HASH_MASK{Capacity - 1};
 
   private:
-    constexpr auto index_of(const Key& key) const noexcept -> opt::Option<usize> {
-        if (size_ == 0) { return opt::none; }
+    constexpr auto index_of(const Key& key) const noexcept -> Option<usize> {
+        if (size_ == 0) { return none; }
 
         const auto hashed{Hash{}(key)};
         const auto fingerprint{Metadata::take_fingerprint(hashed)};
@@ -352,7 +352,7 @@ class HashMap {
             probe = (probe + 1) & HASH_MASK;
             m     = metadata_[probe];
         }
-        return opt::none;
+        return none;
     }
 
     // https://en.cppreference.com/cpp/algorithm/swap
@@ -424,4 +424,4 @@ template <traits::InsertablePair... Pairs>
     return map;
 }
 
-} // namespace ghoti::fixed
+} // namespace stdx::fixed

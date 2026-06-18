@@ -1,8 +1,8 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "hash.hh"
+#include "stdx/hash.hh"
 
-namespace ghoti::tests {
+namespace stdx::tests {
 
 TEST_CASE("Order dependent hashing") {
     hash::Hasher h1{1}, h2{2};
@@ -11,4 +11,4 @@ TEST_CASE("Order dependent hashing") {
     CHECK_FALSE(h1.finalize() == h2.finalize());
 }
 
-} // namespace ghoti::tests
+} // namespace stdx::tests

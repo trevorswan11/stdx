@@ -36,14 +36,9 @@ libdw: Artifact = undefined,
 ///
 /// https://github.com/allyourcodebase/elfutils
 pub fn build(b: *std.Build, config: Config) ?*Self {
-    const zlib_dep = zlib.build(b, config);
-    const zstd_dep = zstd.build(b, config);
     const libargp = buildArgp(b, config);
     const upstream = b.lazyDependency("elfutils", .{});
-    if (zlib_dep == null or
-        zstd_dep == null or
-        libargp == null or
-        upstream == null) return null;
+    if (libargp == null or upstream == null) return null;
 
     const self = b.allocator.create(Self) catch @panic("OOM");
     self.* = .{
@@ -54,8 +49,8 @@ pub fn build(b: *std.Build, config: Config) ?*Self {
             .config_header = elfutils.configHeader(b, config),
         },
         .libargp = libargp.?,
-        .zlib_dep = zlib_dep.?,
-        .zstd_dep = zstd_dep.?,
+        .zlib_dep = zlib.build(b, config),
+        .zstd_dep = zstd.build(b, config),
     };
 
     self.libeu = self.buildEu();

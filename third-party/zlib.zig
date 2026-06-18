@@ -7,8 +7,8 @@ const zlib = @import("sources/zlib.zig");
 
 /// Compiles zlib from source as a static library
 /// https://github.com/allyourcodebase/zlib
-pub fn build(b: *std.Build, config: Config) ?Dependency {
-    const upstream = b.lazyDependency("zlib", .{}) orelse return null;
+pub fn build(b: *std.Build, config: Config) Dependency {
+    const upstream = b.dependency("zlib", .{});
     const root = upstream.path(".");
     const mod = b.createModule(.{
         .target = config.target,

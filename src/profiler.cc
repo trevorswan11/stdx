@@ -1,4 +1,4 @@
-#include "profiler.hh"
+#include "stdx/profiler.hh"
 
 #ifdef STDX_PROFILE
 #    include <chrono>
@@ -17,14 +17,14 @@
 #    include <fmt/ostream.h>
 #    include <fmt/std.h>
 
-#    include "assert.hh"
-#    include "fixed/vector.hh"
-#    include "json.hh"
-#    include "memory.hh"
-#    include "option.hh"
-#    include "types.hh"
+#    include "stdx/assert.hh"
+#    include "stdx/fixed/vector.hh"
+#    include "stdx/json.hh"
+#    include "stdx/memory.hh"
+#    include "stdx/option.hh"
+#    include "stdx/types.hh"
 
-namespace ghoti {
+namespace stdx {
 
 namespace chrono = std::chrono;
 
@@ -40,8 +40,8 @@ struct SessionDeleter {
     }
 };
 
-constinit mem::NullableBox<std::ofstream, SessionDeleter> session;
-constinit std::mutex                                      mutex;
+constinit NullableBox<std::ofstream, SessionDeleter> session;
+constinit std::mutex                                 mutex;
 
 class Buffer {
   public:
@@ -73,7 +73,7 @@ struct BufferManager {
   public:
     static constexpr usize HEADROOM{Buffer::BUF_SIZE / 2};
     static constexpr usize MAX_BUFFERS{1'024UZ};
-    static inline constinit fixed::Vector<opt::Option<Buffer&>, MAX_BUFFERS> buffers;
+    static inline constinit fixed::Vector<Option<Buffer&>, MAX_BUFFERS> buffers;
 
   public:
     Buffer data;
@@ -176,5 +176,5 @@ Timer::~Timer() {
     write_scope(name_, high_res_start, elapsed, std::this_thread::get_id());
 }
 
-} // namespace ghoti
+} // namespace stdx
 #endif

@@ -2,11 +2,11 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "enum.hh"
 #include "helpers/enum.hh"
-#include "types.hh"
+#include "stdx/enum.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::tests {
+namespace stdx::tests {
 
 using helpers::MockEnum;
 using helpers::MockNegativeEnum;
@@ -51,4 +51,4 @@ TEST_CASE("Non-monotonic enum range") {
     for (usize i{0}; const auto v : enum_range<NonMonotonicEnum>()) { CHECK(v == expected[i++]); }
 }
 
-} // namespace ghoti::tests
+} // namespace stdx::tests

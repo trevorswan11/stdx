@@ -6,10 +6,10 @@
 
 #include <ankerl/unordered_dense.h>
 
-#include "string.hh"
-#include "types.hh"
+#include "stdx/string.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::hash {
+namespace stdx::hash {
 
 namespace wyhash {
 
@@ -170,4 +170,4 @@ class Hasher {
     u64 hash_{0xA0761D6478BD642FULL};
 };
 
-} // namespace ghoti::hash
+} // namespace stdx::hash

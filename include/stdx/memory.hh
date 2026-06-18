@@ -4,9 +4,9 @@
 #include <type_traits>
 #include <utility>
 
-#include "assert.hh"
+#include "stdx/assert.hh"
 
-namespace ghoti::mem {
+namespace stdx {
 
 // cppcheck-suppress-begin noExplicitConstructor
 
@@ -80,4 +80,4 @@ template <typename T, typename... Args>
 
 // cppcheck-suppress-end noExplicitConstructor
 
-} // namespace ghoti::mem
+} // namespace stdx

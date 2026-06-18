@@ -1,12 +1,12 @@
-#include "arena.hh"
+#include "stdx/arena.hh"
 
-#include "assert.hh"
-#include "profiler.hh"
-#include "types.hh"
+#include "stdx/assert.hh"
+#include "stdx/profiler.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::mem {
+namespace stdx {
 
-// https://github.com/trevorswan11/ghoti/blob/772707146faa9315c24fb079fd759f3715442db1/old/src/util/arena.c
+// https://github.com/trevorswan11/stdx/blob/772707146faa9315c24fb079fd759f3715442db1/old/src/util/arena.c
 auto Arena::alloc(usize size, usize align) -> void* {
     PROFILE_FUNCTION();
     if (current_) {
@@ -59,4 +59,4 @@ auto Arena::Block::alloc(Arena& a, usize size, usize align) -> void* {
     return a.alloc(size, align);
 }
 
-} // namespace ghoti::mem
+} // namespace stdx

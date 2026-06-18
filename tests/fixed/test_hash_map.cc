@@ -5,11 +5,11 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "fixed/hash_map.hh"
 #include "helpers/raii_tracker.hh"
-#include "types.hh"
+#include "stdx/fixed/hash_map.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::tests {
+namespace stdx::tests {
 
 TEST_CASE("Metadata helpers") {
     using fixed::detail::Metadata;
@@ -237,4 +237,4 @@ TEST_CASE("HashMap ranges compatibility") {
     CHECK(iter_count == 3);
 }
 
-} // namespace ghoti::tests
+} // namespace stdx::tests

@@ -3,10 +3,10 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "arena.hh"
-#include "types.hh"
+#include "stdx/arena.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::tests {
+namespace stdx::tests {
 
 namespace {
 
@@ -20,7 +20,7 @@ struct Large {
 } // namespace
 
 TEST_CASE("Arena pointer stability") {
-    mem::Arena          arena;
+    Arena               arena;
     std::vector<Large*> foos;
 
     // First use
@@ -39,16 +39,16 @@ TEST_CASE("Arena pointer stability") {
 }
 
 TEST_CASE("Arena alignment") {
-    mem::Arena arena;
+    Arena arena;
     CHECK(*arena.make<bool>(true));
     const auto p{arena.make<void*>(nullptr)};
     CHECK(reinterpret_cast<uptr>(p.get()) % alignof(void*) == 0);
 }
 
 TEST_CASE("Arena array construction") {
-    mem::Arena arena;
+    Arena      arena;
     const auto array{arena.make_span<i32>(10)};
     for (const auto& i : array) { CHECK(i == 0); }
 }
 
-} // namespace ghoti::tests
+} // namespace stdx::tests

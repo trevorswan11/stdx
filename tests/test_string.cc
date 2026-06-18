@@ -4,9 +4,9 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "string.hh"
+#include "stdx/string.hh"
 
-namespace ghoti::tests {
+namespace stdx::tests {
 
 TEST_CASE("String traits") {
     STATIC_CHECK(traits::StringLike<std::string>);
@@ -71,4 +71,4 @@ TEST_CASE("String view conversion") {
     CHECK(string::to_view(view) == string::to_view(str));
 }
 
-} // namespace ghoti::tests
+} // namespace stdx::tests

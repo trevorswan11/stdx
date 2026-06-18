@@ -3,11 +3,11 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "option.hh"
-#include "result.hh"
-#include "types.hh"
+#include "stdx/option.hh"
+#include "stdx/result.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::tests {
+namespace stdx::tests {
 
 TEST_CASE("Result traits") {
     STATIC_CHECK(traits::is_result<Result<i32, i64>>::value);
@@ -18,10 +18,10 @@ TEST_CASE("Result traits") {
 
 TEST_CASE("Try macro usage") {
     Result<i32, std::string_view> res;
-    const auto                    unwrap = [&] -> opt::Option<Err<std::string_view>> {
+    const auto                    unwrap = [&] -> Option<Err<std::string_view>> {
         const auto val{TRY(res)};
         CHECK(val == 2);
-        return opt::none;
+        return none;
     };
 
     res.emplace(2);
@@ -34,4 +34,4 @@ TEST_CASE("Try macro usage") {
     CHECK(err->error() == str);
 }
 
-} // namespace ghoti::tests
+} // namespace stdx::tests

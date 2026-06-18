@@ -2,10 +2,10 @@
 
 #include <type_traits>
 
-#include "type_traits.hh"
-#include "types.hh"
+#include "stdx/type_traits.hh"
+#include "stdx/types.hh"
 
-namespace ghoti {
+namespace stdx {
 
 // Returns the rounded-up power of two given the unsigned value
 template <traits::Unsigned U> [[nodiscard]] constexpr auto ceil_power_of_two(U val) noexcept -> U {
@@ -52,4 +52,4 @@ using min_uint_for_bits = std::conditional_t<
 
 } // namespace traits
 
-} // namespace ghoti
+} // namespace stdx

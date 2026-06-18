@@ -1,8 +1,8 @@
 #include <string>
 
-#include "types.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::tests::helpers {
+namespace stdx::tests::helpers {
 
 struct Foo {
     i32  value;
@@ -19,4 +19,4 @@ struct Baz {
     auto operator==(const Baz&) const -> bool = default;
 };
 
-} // namespace ghoti::tests::helpers
+} // namespace stdx::tests::helpers

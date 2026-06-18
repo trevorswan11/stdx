@@ -5,11 +5,11 @@
 
 #include "helpers/dummy.hh"
 #include "helpers/raii_tracker.hh"
-#include "option.hh"
-#include "types.hh"
-#include "variant.hh"
+#include "stdx/option.hh"
+#include "stdx/types.hh"
+#include "stdx/variant.hh"
 
-namespace ghoti::tests {
+namespace stdx::tests {
 
 using Foo     = helpers::Foo;
 using Bar     = helpers::Bar;
@@ -96,8 +96,8 @@ TEST_CASE("Variant::as_opt<T> returns empty Option for inactive type") {
 }
 
 TEST_CASE("Variant::as_opt<T> const yields const ref") {
-    const FBB               v{Bar{"ro"}};
-    opt::Option<const Bar&> opt = v.as_opt<Bar>();
+    const FBB          v{Bar{"ro"}};
+    Option<const Bar&> opt = v.as_opt<Bar>();
     REQUIRE(opt.has_value());
     CHECK(opt->value == "ro");
 }
@@ -186,4 +186,4 @@ TEST_CASE("Variant copy/move destructor accounting") {
     CHECK(Tracker::live_count == 0);
 }
 
-} // namespace ghoti::tests
+} // namespace stdx::tests

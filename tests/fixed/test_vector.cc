@@ -6,17 +6,17 @@
 #include <gsl/pointers>
 #include <gsl/span>
 
-#include "fixed/vector.hh"
 #include "helpers/raii_tracker.hh"
-#include "memory.hh"
-#include "type_traits.hh"
-#include "types.hh"
+#include "stdx/fixed/vector.hh"
+#include "stdx/memory.hh"
+#include "stdx/type_traits.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::tests {
+namespace stdx::tests {
 
 TEST_CASE("StaticVector type checks") {
     STATIC_REQUIRE(traits::TriviallyDestructible<fixed::Vector<gsl::not_null<i32*>, 4>>);
-    STATIC_REQUIRE_FALSE(traits::TriviallyDestructible<fixed::Vector<mem::Box<i32>, 4>>);
+    STATIC_REQUIRE_FALSE(traits::TriviallyDestructible<fixed::Vector<Box<i32>, 4>>);
 }
 
 TEST_CASE("StaticVector basic usage") {
@@ -173,4 +173,4 @@ TEST_CASE("StaticVector ranges compatibility") {
     CHECK(sum == 6);
 }
 
-} // namespace ghoti::tests
+} // namespace stdx::tests

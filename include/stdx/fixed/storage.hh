@@ -3,10 +3,10 @@
 #include <array>
 #include <cstddef>
 
-#include "type_traits.hh"
-#include "types.hh"
+#include "stdx/type_traits.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::fixed::detail {
+namespace stdx::fixed::detail {
 
 // Non-default constructible object use a raw byte array initialized on the fly
 template <typename Data, usize Capacity> struct Storage {
@@ -27,4 +27,4 @@ template <traits::DefaultConstructible Data, usize Capacity> struct Storage<Data
     }
 };
 
-} // namespace ghoti::fixed::detail
+} // namespace stdx::fixed::detail

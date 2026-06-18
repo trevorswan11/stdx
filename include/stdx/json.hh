@@ -3,17 +3,17 @@
 #include <fmt/base.h>
 #include <fmt/format.h>
 
-namespace ghoti::json {
+namespace stdx::json {
 
 // A lazily sanitized string operating at format time
 struct SanitizedString {
     std::string_view raw;
 };
 
-} // namespace ghoti::json
+} // namespace stdx::json
 
-template <> struct fmt::formatter<ghoti::json::SanitizedString> : fmt::formatter<string_view> {
-    static auto format(ghoti::json::SanitizedString s, format_context& ctx) {
+template <> struct fmt::formatter<stdx::json::SanitizedString> : fmt::formatter<string_view> {
+    static auto format(stdx::json::SanitizedString s, format_context& ctx) {
         auto out{ctx.out()};
         for (auto c : s.raw) {
             switch (c) {

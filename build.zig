@@ -14,6 +14,9 @@ pub const utils = @import("build/utils.zig");
 pub const cppcheck = @import("third-party/cppcheck.zig");
 pub const fmt = @import("third-party/fmt.zig");
 pub const catch2 = @import("third-party/catch2.zig");
+pub const zlib = @import("third-party/zlib.zig");
+pub const zstd = @import("third-party/zstd.zig");
+pub const libarchive = @import("third-party/libarchive.zig");
 
 pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{
@@ -131,22 +134,13 @@ const TestArtifacts = struct {
 const version_str = zon.version;
 const version = std.SemanticVersion.parse(version_str) catch @compileError("Malformed version");
 
-fn addArtifacts(b: *std.Build, config: struct {
-    target: ?std.Build.ResolvedTarget = null,
+fn buildStdx(b: *std.Build, config: struct {
+    target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     cxx_flags: []const []const u8,
-    cdb_steps: ?*std.ArrayList(*std.Build.Step),
-    behavior: ?utils.ExecutableBehavior = null,
-    auto_install: bool = true,
-    packaging: bool = false,
-    install_tests_only: bool = true,
-}) !struct {
-    libstdx: *std.Build.Step.Compile,
-    tests: ?TestArtifacts,
-    cppcheck: ?*std.Build.Step.Compile,
-} {
-    const target = config.target orelse b.graph.host;
-    const config_h = b.addConfigHeader(.{}, .{
+}) !*std.Build.Step.Compile {
+    const target = config.target;
+    const config_h = b.addConfigHeader(.{ .include_path = "stdx/config.h" }, .{
         .STDX_VERSION_STR = version_str,
         .STDX_VERSION_MAJOR = @as(i64, version.major),
         .STDX_VERSION_MINOR = @as(i64, version.minor),
@@ -157,7 +151,6 @@ fn addArtifacts(b: *std.Build, config: struct {
         .STDX_LINUX = target.result.os.tag == .linux,
         .STDX_APPLE = target.result.os.tag == .macos,
     });
-    const building_for_host = config.target == null;
 
     const magic_enum = b.dependency("magic_enum", .{});
     const magic_enum_inc = magic_enum.path("include");
@@ -195,8 +188,45 @@ fn addArtifacts(b: *std.Build, config: struct {
             .link_libraries = &.{fmt_dep.artifact},
         }),
     });
+
+    libstdx.installConfigHeader(config_h);
+    for (system_includes) |system_include| {
+        libstdx.installHeadersDirectory(system_include, "", .{
+            .include_extensions = null,
+            .exclude_extensions = &.{".txt"},
+        });
+    }
+    libstdx.installLibraryHeaders(fmt_dep.artifact);
+
+    return libstdx;
+}
+
+fn addArtifacts(b: *std.Build, config: struct {
+    target: ?std.Build.ResolvedTarget = null,
+    optimize: std.builtin.OptimizeMode,
+    cxx_flags: []const []const u8,
+    cdb_steps: ?*std.ArrayList(*std.Build.Step),
+    behavior: ?utils.ExecutableBehavior = null,
+    auto_install: bool = true,
+    packaging: bool = false,
+    install_tests_only: bool = true,
+}) !struct {
+    libstdx: *std.Build.Step.Compile,
+    compressor: *std.Build.Step.Compile,
+    tests: ?TestArtifacts,
+    cppcheck: ?*std.Build.Step.Compile,
+} {
+    const target = config.target orelse b.graph.host;
+    const building_for_host = config.target == null;
+    const libstdx = try buildStdx(b, .{
+        .optimize = config.optimize,
+        .target = target,
+        .cxx_flags = config.cxx_flags,
+    });
+
     if (config.auto_install) b.installArtifact(libstdx);
     if (config.cdb_steps) |cdb_steps| try cdb_steps.append(b.allocator, &libstdx.step);
+    const compressor = buildCompressor(b);
 
     var tests: ?TestArtifacts = null;
     if (building_for_host) {
@@ -236,15 +266,13 @@ fn addArtifacts(b: *std.Build, config: struct {
                 b.path(ProjectPaths.include),
                 b.path(ProjectPaths.tests),
             },
-            .system_include_paths = &system_includes,
             .cxx = .{
                 .files = try utils.collectFiles(b, ProjectPaths.tests, .{
                     .extra_files = &.{ProjectPaths.harness ++ "runner.cc"},
                 }),
                 .flags = config.cxx_flags,
             },
-            .config_headers = &.{config_h},
-            .link_libraries = &.{ libstdx, catch2_dep.artifact, fmt_dep.artifact },
+            .link_libraries = &.{ libstdx, catch2_dep.artifact },
         }, .{
             .name = "stdx",
             .behavior = config.behavior orelse .{
@@ -271,6 +299,7 @@ fn addArtifacts(b: *std.Build, config: struct {
 
     return .{
         .libstdx = libstdx,
+        .compressor = compressor,
         .tests = tests,
         .cppcheck = if (cppcheck_dep) |dep| dep.artifact else null,
     };
@@ -339,4 +368,36 @@ fn addFmtStep(b: *std.Build, tooling_sources: []const []const u8) !void {
     const fmt_check_step = b.step("fmt-check", "Check formatting of all project files");
     fmt_check_step.dependOn(&fmt_check.step);
     fmt_check_step.dependOn(&build_fmt_check.step);
+}
+
+fn buildCompressor(b: *std.Build) *std.Build.Step.Compile {
+    const libarchive_dep = libarchive.build(b, .{
+        .target = b.graph.host,
+        .optimize = .ReleaseFast,
+    });
+
+    const headers = b.addTranslateC(.{
+        .root_source_file = b.path(ProjectPaths.compressor ++ "c.h"),
+        .target = b.graph.host,
+        .optimize = .ReleaseFast,
+    });
+    headers.addIncludePath(libarchive_dep.artifact.getEmittedIncludeTree());
+
+    const compressor = utils.createExecutable(b, .{
+        .zig_main = b.path(ProjectPaths.compressor ++ "main.zig"),
+        .target = b.graph.host,
+        .optimize = .ReleaseFast,
+        .link_libraries = &.{libarchive_dep.artifact},
+        .imports = &.{
+            .{
+                .name = "c",
+                .module = headers.createModule(),
+            },
+        },
+    }, .{
+        .name = "compressor",
+        .behavior = .standalone,
+    });
+    Dependency.addFrameworkSearchPaths(compressor.root_module, b.graph.host);
+    return compressor;
 }

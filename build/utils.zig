@@ -134,13 +134,15 @@ pub fn createModule(b: *std.Build, config: CreateModuleConfig) *std.Build.Module
     return mod;
 }
 
+pub const CreateExecutableConfig = struct {
+    name: []const u8,
+    behavior: ExecutableBehavior = .standalone,
+};
+
 pub fn createExecutable(
     b: *std.Build,
     module_config: CreateModuleConfig,
-    executable_config: struct {
-        name: []const u8,
-        behavior: ExecutableBehavior = .standalone,
-    },
+    executable_config: CreateExecutableConfig,
 ) *std.Build.Step.Compile {
     const exe = b.addExecutable(.{
         .name = executable_config.name,

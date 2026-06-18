@@ -5,13 +5,13 @@
 #include <gsl/span>
 #include <magic_enum/magic_enum.hpp>
 
-#include "assert.hh"
-#include "enum.hh"
-#include "iterator.hh"
-#include "option.hh"
-#include "type_traits.hh"
+#include "stdx/assert.hh"
+#include "stdx/enum.hh"
+#include "stdx/iterator.hh"
+#include "stdx/option.hh"
+#include "stdx/type_traits.hh"
 
-namespace ghoti::fixed {
+namespace stdx::fixed {
 
 // Empty or single-value enums aren't allowed since they eliminate the need for mapping
 template <typename Enum>
@@ -46,9 +46,9 @@ template <MappableEnum E, typename Value> class EnumMap {
             return operator[](key);
         } else if constexpr (traits::Pointer<Value>) {
             const auto value{operator[](key)};
-            return value ? opt::Option<Value>{value} : opt::none;
+            return value ? Option<Value>{value} : none;
         } else {
-            return opt::Option<Value>{operator[](key)};
+            return Option<Value>{operator[](key)};
         }
     }
 
@@ -67,4 +67,4 @@ template <MappableEnum E, typename Value> class EnumMap {
     Map map_{};
 };
 
-} // namespace ghoti::fixed
+} // namespace stdx::fixed

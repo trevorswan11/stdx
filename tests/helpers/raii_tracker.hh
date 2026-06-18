@@ -1,8 +1,8 @@
 #pragma once
 
-#include "types.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::tests::helpers {
+namespace stdx::tests::helpers {
 
 // Non-thread-safe tracker for memory-critical testing
 struct RAIITracker {
@@ -42,4 +42,4 @@ struct RAIITracker {
     }
 };
 
-} // namespace ghoti::tests::helpers
+} // namespace stdx::tests::helpers

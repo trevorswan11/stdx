@@ -36,14 +36,9 @@ execurl: Artifact = undefined,
 /// Compiles curl from source (lib and exe).
 /// https://github.com/allyourcodebase/curl
 pub fn build(b: *std.Build, config: Config) ?*Self {
-    const zlib_dep = zlib.build(b, config);
-    const zstd_dep = zstd.build(b, config);
     const upstream = b.lazyDependency("curl", .{});
     const libmbedtls = buildMbedtls(b, config);
-    if (zlib_dep == null or
-        zstd_dep == null or
-        upstream == null or
-        libmbedtls == null) return null;
+    if (upstream == null or libmbedtls == null) return null;
 
     const self = b.allocator.create(Self) catch @panic("OOM");
     self.* = .{
@@ -55,8 +50,8 @@ pub fn build(b: *std.Build, config: Config) ?*Self {
             .lib_root = upstream.?.path("lib"),
             .src_root = upstream.?.path("src"),
         },
-        .zlib_dep = zlib_dep.?,
-        .zstd_dep = zstd_dep.?,
+        .zlib_dep = zlib.build(b, config),
+        .zstd_dep = zstd.build(b, config),
         .libmbedtls = libmbedtls.?,
     };
 

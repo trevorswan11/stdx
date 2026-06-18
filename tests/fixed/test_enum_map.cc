@@ -3,12 +3,12 @@
 
 #include <catch2/catch_test_macros.hpp>
 
-#include "fixed/enum_map.hh"
 #include "helpers/enum.hh"
-#include "option.hh"
-#include "types.hh"
+#include "stdx/fixed/enum_map.hh"
+#include "stdx/option.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::tests {
+namespace stdx::tests {
 
 using helpers::MockEnum;
 using helpers::MockNegativeEnum;
@@ -16,7 +16,7 @@ using helpers::MockPositiveEnum;
 using helpers::NonMonotonicEnum;
 
 TEST_CASE("Standard enum map") {
-    fixed::EnumMap<MockEnum, opt::Option<int>> map;
+    fixed::EnumMap<MockEnum, Option<int>> map;
     CHECK(map.size() == 4);
     for (const auto& item : map) { CHECK_FALSE(item); }
 
@@ -87,4 +87,4 @@ TEST_CASE("EnumMap ranges compatibility") {
     std::ranges::for_each(map, [](usize value) -> void { CHECK(value == 0xDEADBEEF); });
 }
 
-} // namespace ghoti::tests
+} // namespace stdx::tests

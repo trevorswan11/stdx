@@ -7,7 +7,7 @@
 
 #include <fmt/ostream.h>
 
-namespace ghoti::detail {
+namespace stdx::detail {
 
 constexpr auto assert_impl(std::source_location loc,
                            bool                 condition,
@@ -39,14 +39,14 @@ constexpr auto unreachable_impl(std::source_location loc, std::string_view messa
     }
 }
 
-} // namespace ghoti::detail
+} // namespace stdx::detail
 
 // VERIFY_* macros are not compiled out in release builds
-#define VERIFY_1(expression)      \
-    ::ghoti::detail::assert_impl( \
+#define VERIFY_1(expression)     \
+    ::stdx::detail::assert_impl( \
         std::source_location::current(), static_cast<bool>(expression), "", #expression)
 #define VERIFY_2(expression, message) \
-    ::ghoti::detail::assert_impl(     \
+    ::stdx::detail::assert_impl(      \
         std::source_location::current(), static_cast<bool>(expression), (message), #expression)
 
 #define GET_VERIFY_MACRO(_1, _2, NAME, ...) NAME
@@ -55,8 +55,8 @@ constexpr auto unreachable_impl(std::source_location loc, std::string_view messa
 #ifndef NDEBUG
 #    define ASSERT(...) GET_VERIFY_MACRO(__VA_ARGS__, VERIFY_2, VERIFY_1)(__VA_ARGS__)
 
-#    define UNREACHABLE(message)                                                       \
-        ::ghoti::detail::unreachable_impl(std::source_location::current(), (message)); \
+#    define UNREACHABLE(message)                                                      \
+        ::stdx::detail::unreachable_impl(std::source_location::current(), (message)); \
         std::unreachable()
 #else
 #    define ASSERT_1(expression)                         \

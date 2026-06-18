@@ -96,10 +96,8 @@ pub fn build(b: *std.Build, config: Config) ?*Self {
 /// Compiles libdwarf from source as a static library.
 /// https://github.com/davea42/libdwarf-code
 fn buildDwarf(b: *std.Build, config: Config) ?Artifact {
-    const zlib_dep = zlib.build(b, config);
-    const zstd_dep = zstd.build(b, config);
     const upstream_dep = b.lazyDependency("libdwarf", .{});
-    if (zlib_dep == null or zstd_dep == null or upstream_dep == null) return null;
+    if (upstream_dep == null) return null;
 
     const target = config.target;
     const mod = b.createModule(.{
@@ -118,8 +116,10 @@ fn buildDwarf(b: *std.Build, config: Config) ?Artifact {
     const config_header = dwarf.configHeader(b, target);
     mod.addConfigHeader(config_header);
 
-    mod.linkLibrary(zlib_dep.?.artifact);
-    mod.linkLibrary(zstd_dep.?.artifact);
+    const zlib_dep = zlib.build(b, config);
+    mod.linkLibrary(zlib_dep.artifact);
+    const zstd_dep = zstd.build(b, config);
+    mod.linkLibrary(zstd_dep.artifact);
 
     const lib = b.addLibrary(.{
         .name = "dwarf",

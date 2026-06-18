@@ -8,12 +8,12 @@
 
 #include <gsl/span>
 
-#include "assert.hh"
-#include "fixed/storage.hh"
-#include "type_traits.hh"
-#include "types.hh"
+#include "stdx/assert.hh"
+#include "stdx/fixed/storage.hh"
+#include "stdx/type_traits.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::fixed {
+namespace stdx::fixed {
 
 // A fixed-size zero-allocation container with a vector-like interface
 template <typename Item, usize Capacity> class Vector {
@@ -157,4 +157,4 @@ template <typename Item, usize Capacity> class Vector {
     usize                           size_{0};
 };
 
-} // namespace ghoti::fixed
+} // namespace stdx::fixed

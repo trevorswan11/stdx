@@ -8,9 +8,9 @@
 #    include <fmt/ostream.h>
 #    include <fmt/std.h>
 
-#    include "utility.hh"
+#    include "stdx/utility.hh"
 
-namespace ghoti {
+namespace stdx {
 
 struct Profiler {
     // The tracing json file is created next to the provided binary
@@ -38,10 +38,10 @@ class Timer {
     std::chrono::time_point<std::chrono::steady_clock> start_;
 };
 
-} // namespace ghoti
+} // namespace stdx
 
 #    define PROFILE_SCOPE(name) \
-        ::ghoti::Timer CONCAT(timer, __LINE__) { name }
+        ::stdx::Timer CONCAT(timer, __LINE__) { name }
 #    define PROFILE_FUNCTION() PROFILE_SCOPE(__PRETTY_FUNCTION__)
 #else
 #    include <string_view>
@@ -49,7 +49,7 @@ class Timer {
 #    define PROFILE_SCOPE(name)
 #    define PROFILE_FUNCTION()
 
-namespace ghoti {
+namespace stdx {
 
 // This is compiled out with argv[0]: https://godbolt.org/z/5jdK3ssor
 struct Profiler {
@@ -61,5 +61,5 @@ struct Timer {
     constexpr explicit Timer(const char*) noexcept {}
 };
 
-} // namespace ghoti
+} // namespace stdx
 #endif

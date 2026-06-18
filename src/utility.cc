@@ -1,6 +1,6 @@
-#include "utility.hh"
+#include "stdx/utility.hh"
 
-#include <config.h>
+#include <stdx/config.h>
 
 #if STDX_WINDOWS
 #    include <io.h>
@@ -11,8 +11,8 @@
 #    define ISATTY isatty
 #endif
 
-namespace ghoti {
+namespace stdx {
 
 auto is_tty() noexcept -> bool { return ISATTY(STDOUT_FILENO); }
 
-} // namespace ghoti
+} // namespace stdx

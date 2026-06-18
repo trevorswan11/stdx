@@ -6,9 +6,9 @@
 
 #include <magic_enum/magic_enum.hpp>
 
-#include "types.hh"
+#include "stdx/types.hh"
 
-namespace ghoti {
+namespace stdx {
 
 template <typename Enum>
 concept ValidEnum = std::is_enum_v<Enum>;
@@ -91,4 +91,4 @@ template <BoundedEnum E> consteval auto enum_range() noexcept {
     }
 // NOLINTEND
 
-} // namespace ghoti
+} // namespace stdx

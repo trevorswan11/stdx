@@ -1,8 +1,8 @@
 #pragma once
 
-#include "types.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::tests::helpers {
+namespace stdx::tests::helpers {
 
 struct Base {
     virtual ~Base() = default;
@@ -13,4 +13,4 @@ struct Derived : Base {
     i32 y{20};
 };
 
-} // namespace ghoti::tests::helpers
+} // namespace stdx::tests::helpers

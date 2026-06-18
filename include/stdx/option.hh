@@ -9,11 +9,11 @@
 
 #include <ankerl/unordered_dense.h>
 
-#include "assert.hh"
-#include "type_traits.hh"
-#include "types.hh"
+#include "stdx/assert.hh"
+#include "stdx/type_traits.hh"
+#include "stdx/types.hh"
 
-namespace ghoti {
+namespace stdx {
 
 namespace traits {
 
@@ -37,8 +37,6 @@ template <traits::ScopedEnum E> struct Nullable<E> {
 };
 
 } // namespace traits
-
-namespace opt {
 
 using None = std::nullopt_t;
 constexpr None none{std::nullopt}; // NOLINT
@@ -93,7 +91,7 @@ template <typename T> class Ref {
         static_assert(!std::is_array_v<Res>, "Result of f(value()) should not be an Array");
         static_assert(!std::is_same_v<Res, std::in_place_t>,
                       "Result of f(value()) should not be std::in_place_t");
-        static_assert(!std::is_same_v<Res, None>, "Result of f(value()) should not be opt::none");
+        static_assert(!std::is_same_v<Res, None>, "Result of f(value()) should not be stdx::none");
 
         // Also from clang, but generalized to support reference transform chains
         using Ret = std::conditional_t<std::is_reference_v<ResCV>,
@@ -113,7 +111,7 @@ template <typename T> class Ref {
     [[nodiscard]] constexpr auto materialize() const noexcept
         requires traits::CopyConstructible<T>
     {
-        return has_value() ? std::optional<std::remove_const_t<T>>{*ptr_} : opt::none;
+        return has_value() ? std::optional<std::remove_const_t<T>>{*ptr_} : none;
     }
 
     // Pointer comparison (just checks memory addresses)
@@ -180,7 +178,7 @@ template <traits::Compactable T> class CompactOpt {
         static_assert(!std::is_array_v<Res>, "Result of f(value()) should not be an Array");
         static_assert(!std::is_same_v<Res, std::in_place_t>,
                       "Result of f(value()) should not be std::in_place_t");
-        static_assert(!std::is_same_v<Res, None>, "Result of f(value()) should not be opt::none");
+        static_assert(!std::is_same_v<Res, None>, "Result of f(value()) should not be stdx::none");
         static_assert(std::is_object_v<Res>, "Result of f(value()) should be an object type");
 
         // Also from clang, but generalized to support reference transform chains
@@ -195,7 +193,7 @@ template <traits::Compactable T> class CompactOpt {
     }
 
     [[nodiscard]] constexpr operator std::optional<T>() const noexcept {
-        return has_value() ? std::optional<T>{value_} : opt::none;
+        return has_value() ? std::optional<T>{value_} : none;
     }
 
   private:
@@ -278,7 +276,7 @@ class Tribool {
     }
 
     [[nodiscard]] constexpr operator std::optional<bool>() const noexcept {
-        return has_value() ? std::optional<bool>{value_} : opt::none;
+        return has_value() ? std::optional<bool>{value_} : none;
     }
 
   private:
@@ -289,20 +287,20 @@ class Tribool {
 };
 
 // A minimal, zero-cost optional usize wrapper
-class Size {
+class OptSize {
   public:
-    constexpr Size() noexcept = default;
+    constexpr OptSize() noexcept = default;
 
     // cppcheck-suppress-begin noExplicitConstructor
-    constexpr Size(usize idx) noexcept : value_{idx} {}
-    constexpr Size(std::nullopt_t) noexcept {}
+    constexpr OptSize(usize idx) noexcept : value_{idx} {}
+    constexpr OptSize(std::nullopt_t) noexcept {}
 
     // Any negative value is treated as a sentinel
-    template <traits::Integral Int> constexpr Size(Int i) noexcept {
+    template <traits::Integral Int> constexpr OptSize(Int i) noexcept {
         if (i >= 0) { value_ = static_cast<usize>(i); }
     }
 
-    constexpr Size(const std::optional<usize>& oi) noexcept : value_{oi.value_or(NO_VALUE)} {}
+    constexpr OptSize(const std::optional<usize>& oi) noexcept : value_{oi.value_or(NO_VALUE)} {}
     // cppcheck-suppress-end noExplicitConstructor
 
     [[nodiscard]] constexpr auto has_value() const noexcept -> bool { return value_ != NO_VALUE; }
@@ -326,10 +324,10 @@ class Size {
     [[nodiscard]] constexpr auto operator*() const noexcept -> usize { return get(); }
 
     [[nodiscard]] constexpr operator std::optional<usize>() const noexcept {
-        return has_value() ? std::optional<usize>{value_} : opt::none;
+        return has_value() ? std::optional<usize>{value_} : none;
     }
 
-    [[nodiscard]] constexpr auto operator==(const Size&) const noexcept -> bool = default;
+    [[nodiscard]] constexpr auto operator==(const OptSize&) const noexcept -> bool = default;
 
     [[nodiscard]] auto hash() const noexcept -> u64 { return std::hash<usize>{}(value_); }
 
@@ -340,29 +338,27 @@ class Size {
     usize value_{NO_VALUE};
 };
 
-} // namespace opt
-
 namespace traits {
 
 template <typename T> struct is_option : std::false_type {};
 template <typename T> struct is_option<std::optional<T>> : std::true_type {};
-template <typename T> struct is_option<opt::detail::Ref<T>> : std::true_type {};
-template <typename T> struct is_option<opt::detail::CompactOpt<T>> : std::true_type {};
+template <typename T> struct is_option<detail::Ref<T>> : std::true_type {};
+template <typename T> struct is_option<detail::CompactOpt<T>> : std::true_type {};
 
 template <typename T>
 concept Option = is_option<T>::value;
 
 template <typename T> struct is_opt_size : std::false_type {};
-template <> struct is_opt_size<opt::Size> : std::true_type {};
+template <> struct is_opt_size<OptSize> : std::true_type {};
 
 template <typename T>
 concept OptSize = is_opt_size<T>::value;
 
 } // namespace traits
 
-} // namespace ghoti
+} // namespace stdx
 
-template <> struct ankerl::unordered_dense::hash<ghoti::opt::Size> {
+template <> struct ankerl::unordered_dense::hash<stdx::OptSize> {
     using is_avalanching = void;
-    [[nodiscard]] auto operator()(const ghoti::opt::Size& o) const noexcept { return o.hash(); }
+    [[nodiscard]] auto operator()(const stdx::OptSize& o) const noexcept { return o.hash(); }
 };

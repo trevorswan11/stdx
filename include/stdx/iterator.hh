@@ -3,10 +3,10 @@
 #include <tuple>
 #include <type_traits>
 
-#include "type_traits.hh"
-#include "types.hh"
+#include "stdx/type_traits.hh"
+#include "stdx/types.hh"
 
-namespace ghoti {
+namespace stdx {
 
 // Similar to a std::pair, but the Visitor may be a function pointer
 template <typename Iterable, typename Visitor> struct IterPair {
@@ -48,4 +48,4 @@ using common_tuple_type_t = std::common_type_t<std::tuple_element_t<I, std::remo
     MAKE_UNALIASED_ITERATOR(Alias, member)
 // NOLINTEND
 
-} // namespace ghoti
+} // namespace stdx

@@ -2,9 +2,9 @@
 #include <fmt/format.h>
 #include <string>
 
-#include "json.hh"
+#include "stdx/json.hh"
 
-namespace ghoti::tests {
+namespace stdx::tests {
 
 TEST_CASE("Standard alphanum string") {
     CHECK(fmt::format("{}", json::SanitizedString{""}).empty());
@@ -27,4 +27,4 @@ TEST_CASE("Non-printable control characters") {
     CHECK(result == R"(s\u0002e)");
 }
 
-} // namespace ghoti::tests
+} // namespace stdx::tests

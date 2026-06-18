@@ -8,9 +8,9 @@
 #include <string_view>
 #include <type_traits>
 
-#include "types.hh"
+#include "stdx/types.hh"
 
-namespace ghoti {
+namespace stdx {
 
 namespace traits {
 
@@ -94,4 +94,4 @@ template <traits::StringLike S>
 
 } // namespace string
 
-} // namespace ghoti
+} // namespace stdx

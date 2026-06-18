@@ -6,11 +6,11 @@
 #include <gsl/pointers>
 #include <gsl/span>
 
-#include "assert.hh"
-#include "type_traits.hh"
-#include "types.hh"
+#include "stdx/assert.hh"
+#include "stdx/type_traits.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::mem {
+namespace stdx {
 
 // Do not free returned memory directly!
 class Arena {
@@ -77,4 +77,4 @@ class Arena {
     Block* current_{nullptr};
 };
 
-} // namespace ghoti::mem
+} // namespace stdx

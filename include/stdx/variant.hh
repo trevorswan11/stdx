@@ -5,13 +5,13 @@
 #include <type_traits>
 #include <utility>
 
-#include "assert.hh"
-#include "math.hh"
-#include "option.hh"
-#include "type_traits.hh"
-#include "types.hh"
+#include "stdx/assert.hh"
+#include "stdx/math.hh"
+#include "stdx/option.hh"
+#include "stdx/type_traits.hh"
+#include "stdx/types.hh"
 
-namespace ghoti {
+namespace stdx {
 
 // https://en.cppreference.com/cpp/utility/variant/visit2
 template <class... Ts> struct Overloaded : Ts... {
@@ -136,8 +136,8 @@ class Variant {
     // Returns a reference to the active type if T matches
     template <typename T, typename Self>
     [[nodiscard]] auto as_opt(this Self& self) noexcept
-        -> opt::Option<traits::const_dispatch_t<Self, T>&> {
-        if (!self.template is<T>()) { return opt::none; }
+        -> Option<traits::const_dispatch_t<Self, T>&> {
+        if (!self.template is<T>()) { return none; }
         return {self.template as_raw<T>()};
     }
 
@@ -256,4 +256,4 @@ constexpr auto operator<(Unit, Unit) noexcept -> bool { return false; }
 constexpr auto operator<=(Unit, Unit) noexcept -> bool { return true; }
 constexpr auto operator>=(Unit, Unit) noexcept -> bool { return true; }
 
-} // namespace ghoti
+} // namespace stdx

@@ -45,10 +45,8 @@ libopcodes: Artifact = undefined,
 /// Compiles binutils from source as a static library.
 /// https://github.com/allyourcodebase/binutils
 pub fn build(b: *std.Build, config: Config) ?*Self {
-    const zlib_dep = zlib.build(b, config);
-    const zstd_dep = zstd.build(b, config);
     const upstream = b.lazyDependency("binutils", .{});
-    if (zlib_dep == null or zstd_dep == null or upstream == null) return null;
+    if (upstream == null) return null;
 
     const self = b.allocator.create(Self) catch @panic("OOM");
     self.* = .{
@@ -59,8 +57,8 @@ pub fn build(b: *std.Build, config: Config) ?*Self {
             .config = config,
             .include = upstream.?.path("include"),
         },
-        .zlib_dep = zlib_dep.?,
-        .zstd_dep = zstd_dep.?,
+        .zlib_dep = zlib.build(b, config),
+        .zstd_dep = zstd.build(b, config),
     };
 
     self.libsframe = self.buildSframe();

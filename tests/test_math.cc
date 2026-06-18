@@ -3,10 +3,10 @@
 #include <catch2/catch_template_test_macros.hpp>
 #include <catch2/catch_test_macros.hpp>
 
-#include "math.hh"
-#include "types.hh"
+#include "stdx/math.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::tests {
+namespace stdx::tests {
 
 TEMPLATE_TEST_CASE("Ceil power of two sizes", "", u8, u16, u32, u64, usize) { // NOLINT
     CHECK(ceil_power_of_two<TestType>(0) == 1);
@@ -30,4 +30,4 @@ TEST_CASE("Minimum unsigned int") {
     STATIC_REQUIRE(std::is_same_v<traits::min_uint_for_bits<33>, u64>);
 }
 
-} // namespace ghoti::tests
+} // namespace stdx::tests

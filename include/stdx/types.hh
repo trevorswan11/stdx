@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <type_traits>
 
-namespace ghoti {
+namespace stdx {
 
 using u8    = std::uint8_t;
 using i8    = std::int8_t;
@@ -23,4 +23,4 @@ using idiff = std::ptrdiff_t;
 using f32 = float;
 using f64 = double;
 
-} // namespace ghoti
+} // namespace stdx

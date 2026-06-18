@@ -4,10 +4,10 @@
 #include <expected>
 #include <type_traits>
 
-#include "option.hh"
-#include "type_traits.hh"
+#include "stdx/option.hh"
+#include "stdx/type_traits.hh"
 
-namespace ghoti {
+namespace stdx {
 
 template <typename E> using Err = std::__1::unexpected<E>;
 
@@ -45,7 +45,7 @@ template <typename E> class EmptyResult {
     [[nodiscard]] constexpr auto operator==(const EmptyResult&) const noexcept -> bool = default;
 
   private:
-    opt::Option<E> error_;
+    Option<E> error_;
 };
 
 // Uses explicit inline namespace due to name collisions in std
@@ -88,4 +88,4 @@ concept Result = is_result<T>::value;
 
 } // namespace traits
 
-} // namespace ghoti
+} // namespace stdx

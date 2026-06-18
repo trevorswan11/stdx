@@ -1,5 +1,5 @@
 {
-  description = "Ghoti language development.";
+  description = "stdxtdx development.";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";

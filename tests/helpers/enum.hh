@@ -1,8 +1,8 @@
 #pragma once
 
-#include "types.hh"
+#include "stdx/types.hh"
 
-namespace ghoti::tests::helpers {
+namespace stdx::tests::helpers {
 
 enum class MockEnum : u8 {
     A,
@@ -32,4 +32,4 @@ enum class NonMonotonicEnum : u8 {
     D = 23,
 };
 
-} // namespace ghoti::tests::helpers
+} // namespace stdx::tests::helpers
