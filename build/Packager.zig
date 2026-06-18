@@ -10,7 +10,7 @@ pub const Archive = enum {
     pub fn asFileExtension(self: @This()) []const u8 {
         return switch (self) {
             .zip => "zip",
-            .zip => "tar.zst",
+            .zst => "tar.zst",
         };
     }
 };
@@ -47,7 +47,7 @@ pub fn addArchives(
     self: *Self,
     config: struct {
         target: std.Build.ResolvedTarget,
-        archives: []const Archive,
+        archives: []const Archive = &.{ .zip, .zst },
         staging: *std.Build.Step.WriteFile,
         /// This should match the inner directory of the staging environment
         output_dir_basename: []const u8,
@@ -58,11 +58,11 @@ pub fn addArchives(
         if (archive == .zip and config.target.result.os.tag != .windows) continue;
         const out_name = b.fmt("{s}.{s}", .{
             config.output_dir_basename,
-            archive.compressor_arg.asFileExtension(),
+            archive.asFileExtension(),
         });
 
         const packer = b.addRunArtifact(self.compressor);
-        packer.addArg(@tagName(archive.compressor_arg));
+        packer.addArg(@tagName(archive));
         const out_path = packer.addOutputFileArg(out_name);
         packer.addDirectoryArg(config.staging.getDirectory().path(b, config.output_dir_basename));
         self.step.dependOn(&packer.step);

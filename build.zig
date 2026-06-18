@@ -6,6 +6,7 @@ pub const CDBGenerator = @import("build/CDBGenerator.zig");
 pub const RemoveDir = @import("build/RemoveDir.zig");
 pub const LOCCounter = @import("build/LOCCounter.zig");
 pub const CoverageParser = @import("build/CoverageParser.zig");
+pub const Packager = @import("build/Packager.zig");
 const ProjectPaths = @import("build/ProjectPaths.zig");
 
 pub const Dependency = @import("third-party/Dependency.zig");
