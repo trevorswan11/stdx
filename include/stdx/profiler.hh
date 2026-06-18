@@ -1,19 +1,12 @@
 #pragma once
 
-#ifdef STDX_PROFILE
-#    include <cassert>
-#    include <chrono>
-#    include <string_view>
-
-#    include <fmt/ostream.h>
-#    include <fmt/std.h>
-
-#    include "stdx/utility.hh"
+#include <chrono>
+#include <string_view>
 
 namespace stdx {
 
+// Opens a Chrome-trace JSON profiling session next to the given binary.
 struct Profiler {
-    // The tracing json file is created next to the provided binary
     explicit Profiler(std::string_view binary_path);
     ~Profiler();
 
@@ -23,6 +16,7 @@ struct Profiler {
     auto operator=(Profiler&&) noexcept -> Profiler& = delete;
 };
 
+// Records a named time range.
 class Timer {
   public:
     explicit Timer(const char* name);
@@ -34,32 +28,15 @@ class Timer {
     auto operator=(Timer&&) noexcept -> Timer& = delete;
 
   private:
-    const char*                                        name_;
-    std::chrono::time_point<std::chrono::steady_clock> start_;
+    [[maybe_unused]] const char*                                        name_;
+    [[maybe_unused]] std::chrono::time_point<std::chrono::steady_clock> start_;
 };
 
 } // namespace stdx
 
-#    define PROFILE_SCOPE(name) \
-        ::stdx::Timer CONCAT(timer, __LINE__) { name }
-#    define PROFILE_FUNCTION() PROFILE_SCOPE(__PRETTY_FUNCTION__)
-#else
-#    include <string_view>
+#define PROFILE_CONCAT_INNER(a, b) a##b
+#define PROFILE_CONCAT(a, b) PROFILE_CONCAT_INNER(a, b)
 
-#    define PROFILE_SCOPE(name)
-#    define PROFILE_FUNCTION()
-
-namespace stdx {
-
-// This is compiled out with argv[0]: https://godbolt.org/z/5jdK3ssor
-struct Profiler {
-    constexpr explicit Profiler(std::string_view) noexcept {}
-};
-
-// This exists purely as a test hook
-struct Timer {
-    constexpr explicit Timer(const char*) noexcept {}
-};
-
-} // namespace stdx
-#endif
+#define PROFILE_SCOPE(name) \
+    ::stdx::Timer PROFILE_CONCAT(timer, __LINE__) { name }
+#define PROFILE_FUNCTION() PROFILE_SCOPE(__PRETTY_FUNCTION__)

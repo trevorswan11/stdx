@@ -46,8 +46,6 @@ const stdx_dep = b.dependency("stdx", .{
 const libstdx = stdx_dep.artifact("stdx");
 ```
 
-Note that if you would like to use the chromium tracer (`stdx/profiler.hh`), you should define `STDX_PROFILE` in your parent build (either unconditionally or through an associated `b.option`). This is required to ensure the profiler's lifecycle is consistent and no memory or file resources leak.
-
 ## Dependencies
 
 To reduce shared complexity across different projects, stdx provides the following fully-wired dependencies via the Zig build system:

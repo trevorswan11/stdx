@@ -177,4 +177,14 @@ Timer::~Timer() {
 }
 
 } // namespace stdx
+#else
+namespace stdx {
+
+Profiler::Profiler(std::string_view) {}
+Profiler::~Profiler() = default;
+
+Timer::Timer(const char*) {}
+Timer::~Timer() = default;
+
+} // namespace stdx
 #endif
