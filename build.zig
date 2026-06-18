@@ -23,7 +23,7 @@ pub fn build(b: *std.Build) !void {
         .preferred_optimize_mode = .ReleaseFast,
     });
     const target = b.standardTargetOptions(.{});
-    const building_for_host = b.option(bool, "building_for_host", "Build for the host target") orelse true;
+    const building_for_dep = b.option(bool, "building_for_dep", "Build for a dependency") orelse false;
     const run_cdb_gen = b.option(bool, "run_cdb_gen", "Run cdb generation") orelse true;
 
     const cdb_gen_opt: ?*CDBGenerator = if (run_cdb_gen) CDBGenerator.init(b) else null;
@@ -63,14 +63,14 @@ pub fn build(b: *std.Build) !void {
         .cxx_flags = compiler_flags.items,
         .cdb_steps = if (run_cdb_gen) &cdb_steps else null,
         .install_tests_only = install_tests_only,
-        .building_for_host = building_for_host,
+        .building_for_dep = building_for_dep,
     });
 
     if (cdb_gen_opt) |cdb_gen| {
         for (cdb_steps.items) |cdb_step| cdb_gen.step.dependOn(cdb_step);
     }
 
-    if (building_for_host) {
+    if (!building_for_dep) {
         try addTooling(b, .{
             .cdb_gen = cdb_gen_opt,
             .cppcheck = artifacts.cppcheck.?,
@@ -219,7 +219,7 @@ fn addArtifacts(b: *std.Build, config: struct {
     behavior: ?utils.ExecutableBehavior = null,
     auto_install: bool = true,
     install_tests_only: bool = true,
-    building_for_host: bool = true,
+    building_for_dep: bool = true,
 }) !struct {
     libstdx: *std.Build.Step.Compile,
     compressor: *std.Build.Step.Compile,
@@ -238,7 +238,7 @@ fn addArtifacts(b: *std.Build, config: struct {
     const compressor = buildCompressor(b);
 
     var tests: ?TestArtifacts = null;
-    if (config.building_for_host) {
+    if (!config.building_for_dep) {
         const test_install_dir: ?[]const u8 = if (config.auto_install) "tests" else null;
         const harness_main = b.path(ProjectPaths.harness ++ "main.zig");
         const catch2_dep = catch2.build(b, .{
@@ -301,7 +301,7 @@ fn addArtifacts(b: *std.Build, config: struct {
         try tests.?.configure(b, config.cdb_steps, test_install_dir, config.install_tests_only);
     }
 
-    const cppcheck_dep: ?Dependency = if (config.building_for_host) try cppcheck.build(b, .{
+    const cppcheck_dep: ?Dependency = if (!config.building_for_dep) try cppcheck.build(b, .{
         .target = target,
         .optimize = .ReleaseFast,
     }) else null;
