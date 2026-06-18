@@ -225,7 +225,7 @@ class HashMap {
 
         usize limit{Capacity};
         usize first_tombstone_idx{Capacity};
-        usize probe{hashed & HASH_MASK};
+        usize probe{static_cast<usize>(hashed & HASH_MASK)};
 
         auto m{metadata_[probe]};
         while (!m.is_open() && limit != 0) {
@@ -340,7 +340,7 @@ class HashMap {
         const auto fingerprint{Metadata::take_fingerprint(hashed)};
 
         usize limit{Capacity};
-        usize probe{hashed & HASH_MASK};
+        usize probe{static_cast<usize>(hashed & HASH_MASK)};
 
         auto m{metadata_[probe]};
         while (!m.is_open() && limit != 0) {
