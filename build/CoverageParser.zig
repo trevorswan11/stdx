@@ -1,8 +1,5 @@
 const std = @import("std");
 
-const KcovBuilder = @import("../third-party/kcov/KcovBuilder.zig");
-const RemoveDir = @import("RemoveDir.zig");
-
 const CoverageInfo = struct {
     percent_covered: []const u8,
 };
@@ -60,58 +57,4 @@ fn coverageParse(step: *std.Build.Step, _: std.Build.Step.MakeOptions) !void {
     self.curl.addArg("-s");
     self.curl.addArg(b.fmt("https://img.shields.io/badge/Coverage-{s}%25-pink", .{percentage}));
     std.log.info("Test Coverage: {s}%", .{percentage});
-}
-
-/// Adds coverage reporting on supported platforms for all test artifacts
-pub fn addStep(b: *std.Build, configs: []const KcovBuilder.RunKcovConfig) !void {
-    const kcov = KcovBuilder.build(b, .{
-        .target = b.graph.host,
-        .optimize = .ReleaseFast,
-    }) orelse return;
-
-    var reports: std.ArrayList(KcovBuilder.RunKcovReport) = .empty;
-    for (configs) |config| {
-        try reports.append(b.allocator, try kcov.runKcov(config));
-    }
-
-    const coverage = b.step("coverage", "Generate coverage report");
-    for (reports.items) |report| {
-        coverage.dependOn(&report.runner.step);
-    }
-    const merged = kcov.mergeKcovReports(reports.items);
-
-    const install_merged = b.option(
-        bool,
-        "install-merged",
-        "install merged kcov report",
-    ) orelse false;
-    if (install_merged) {
-        const merged_output_dirname = "merged";
-        const install = b.addInstallDirectory(.{
-            .source_dir = merged.output_dir,
-            .install_dir = .prefix,
-            .install_subdir = merged_output_dirname,
-        });
-
-        const remove: *RemoveDir = .init(b, .{
-            .cwd_relative = b.pathJoin(&.{
-                b.install_prefix,
-                merged_output_dirname,
-            }),
-        });
-        install.step.dependOn(&remove.step);
-        coverage.dependOn(&install.step);
-    }
-
-    const curl = b.addRunArtifact(kcov.curl.execurl);
-    curl.addArg("-o");
-    const badge_file = curl.addOutputFileArg("coverage.svg");
-    const install = b.addInstallFile(badge_file, "coverage.svg");
-    curl.has_side_effects = true;
-
-    const parser: *Self = .init(b, merged.output_dir, curl);
-    parser.step.dependOn(&merged.runner.step);
-    curl.step.dependOn(&parser.step);
-    coverage.dependOn(&curl.step);
-    coverage.dependOn(&install.step);
 }

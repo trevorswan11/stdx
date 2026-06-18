@@ -13,6 +13,7 @@ pub const KcovBuilder = @import("third-party/kcov/KcovBuilder.zig");
 
 pub const utils = @import("build/utils.zig");
 pub const builders = @import("build/builders.zig");
+pub const steps = @import("build/steps.zig");
 pub const cppcheck = @import("third-party/cppcheck.zig");
 pub const fmt = @import("third-party/fmt.zig");
 pub const catch2 = @import("third-party/catch2.zig");
@@ -26,6 +27,7 @@ pub fn build(b: *std.Build) !void {
 
     const building_for_dep = b.option(bool, "building_for_dep", "Build for a dependency") orelse false;
     const run_cdb_gen = b.option(bool, "run_cdb_gen", "Run cdb generation") orelse true;
+    const skip_catch2 = b.option(bool, "skip_catch2", "Don't compile catch2 or any test artifacts") orelse false;
 
     const cdb_gen_opt: ?*CDBGenerator = if (run_cdb_gen) CDBGenerator.init(b) else null;
     var compiler_flags: std.ArrayList([]const u8) = .empty;
@@ -62,10 +64,21 @@ pub fn build(b: *std.Build) !void {
         .cdb_steps = if (run_cdb_gen) &cdb_steps else null,
         .install_tests_only = install_tests_only,
         .building_for_dep = building_for_dep,
+        .skip_catch2 = skip_catch2,
     });
 
     if (cdb_gen_opt) |cdb_gen| {
         for (cdb_steps.items) |cdb_step| cdb_gen.step.dependOn(cdb_step);
+    }
+
+    const kcov_builder = KcovBuilder.build(b, .{
+        .target = target,
+        .optimize = .ReleaseFast,
+    });
+
+    if (kcov_builder) |kcov| {
+        b.installArtifact(kcov.curl.execurl);
+        b.installArtifact(kcov.kcov_exe);
     }
 
     if (!building_for_dep) {
@@ -73,22 +86,27 @@ pub fn build(b: *std.Build) !void {
             .target = b.graph.host,
             .optimize = .ReleaseFast,
         });
+        b.installArtifact(cppcheck_dep.artifact);
 
         try addTooling(b, .{
             .cdb_gen = cdb_gen_opt,
             .cppcheck = cppcheck_dep.artifact,
         });
 
-        if (artifacts.tests) |tests| try CoverageParser.addStep(b, &[_]KcovBuilder.RunKcovConfig{
-            .{
-                .artifact = tests.harness_tests,
-                .include_patterns = &.{ProjectPaths.harness},
-            },
-            .{
-                .artifact = tests.stdx_tests,
-                .include_patterns = &.{
-                    try b.build_root.join(b.allocator, &.{ProjectPaths.src}),
-                    try b.build_root.join(b.allocator, &.{ProjectPaths.include}),
+        if (artifacts.tests) |tests| if (kcov_builder) |kcov| try steps.addCoverage(b, .{
+            .curl = kcov.curl.execurl,
+            .kcov = kcov.kcov_exe,
+            .run_configs = &.{
+                .{
+                    .artifact = tests.harness_tests,
+                    .include_patterns = &.{ProjectPaths.harness},
+                },
+                .{
+                    .artifact = tests.stdx_tests,
+                    .include_patterns = &.{
+                        try b.build_root.join(b.allocator, &.{ProjectPaths.src}),
+                        try b.build_root.join(b.allocator, &.{ProjectPaths.include}),
+                    },
                 },
             },
         });
@@ -206,9 +224,9 @@ fn addArtifacts(b: *std.Build, config: struct {
     cxx_flags: []const []const u8,
     cdb_steps: ?*std.ArrayList(*std.Build.Step),
     behavior: ?utils.ExecutableBehavior = null,
-    auto_install: bool = true,
     install_tests_only: bool = true,
     building_for_dep: bool = true,
+    skip_catch2: bool = false,
 }) !struct {
     libstdx: *std.Build.Step.Compile,
     tests: ?TestArtifacts,
@@ -218,63 +236,71 @@ fn addArtifacts(b: *std.Build, config: struct {
         .target = config.target,
         .cxx_flags = config.cxx_flags,
     });
-
-    if (config.auto_install) b.installArtifact(libstdx);
+    b.installArtifact(libstdx);
     if (config.cdb_steps) |cdb_steps| try cdb_steps.append(b.allocator, &libstdx.step);
 
-    var tests: ?TestArtifacts = null;
-    if (!config.building_for_dep) {
-        const test_install_dir: ?[]const u8 = if (config.auto_install) "tests" else null;
-
-        // The test harness has standalone tests of its own
-        const harness_tests = b.addTest(.{
-            .name = "harness",
-            .root_module = b.createModule(.{
-                .root_source_file = b.path(ProjectPaths.harness ++ "main.zig"),
-                .optimize = config.optimize,
-                .target = config.target,
-                .link_libc = true,
-            }),
-        });
-
-        const harness_step = b.step("test-harness", "Build/run test harness' tests");
-        _ = utils.ExecutableBehavior.installArtifact(
-            b,
-            harness_tests,
-            harness_step,
-            test_install_dir,
-            config.install_tests_only,
-        );
-
-        const stdx_tests = builders.strappedTest(b, .{
+    var catch2_dep: ?Dependency = null;
+    if (!config.skip_catch2) {
+        catch2_dep = catch2.build(b, .{
             .target = config.target,
             .optimize = config.optimize,
-            .libstdx = libstdx,
-            .cxx_files = try utils.collectFiles(b, ProjectPaths.tests, .{}),
-            .cxx_flags = config.cxx_flags,
-            .include_paths = &.{
-                b.path(ProjectPaths.include),
-                b.path(ProjectPaths.tests),
-            },
-            .executable_config = .{
-                .name = "stdx",
-                .behavior = config.behavior orelse .{
-                    .installable = .{
-                        .cmd_name = "test-stdx",
-                        .cmd_desc = "Build/run stdx's unit tests",
-                        .install_dir = test_install_dir,
-                        .install_only = config.install_tests_only,
-                    },
+        });
+        b.installArtifact(catch2_dep.?.artifact);
+    }
+
+    if (config.building_for_dep or catch2_dep == null) {
+        return .{ .libstdx = libstdx, .tests = null };
+    }
+
+    // The test harness has standalone tests of its own
+    const harness_tests = b.addTest(.{
+        .name = "harness",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(ProjectPaths.harness ++ "main.zig"),
+            .optimize = config.optimize,
+            .target = config.target,
+            .link_libc = true,
+        }),
+    });
+
+    const harness_step = b.step("test-harness", "Build/run test harness' tests");
+    _ = utils.ExecutableBehavior.installArtifact(
+        b,
+        harness_tests,
+        harness_step,
+        "tests",
+        config.install_tests_only,
+    );
+
+    const stdx_tests = builders.strappedTest(b, .{
+        .target = config.target,
+        .optimize = config.optimize,
+        .libstdx = libstdx,
+        .libcatch2 = catch2_dep.?.artifact,
+        .cxx_files = try utils.collectFiles(b, ProjectPaths.tests, .{}),
+        .cxx_flags = config.cxx_flags,
+        .include_paths = &.{
+            b.path(ProjectPaths.include),
+            b.path(ProjectPaths.tests),
+        },
+        .executable_config = .{
+            .name = "stdx",
+            .behavior = config.behavior orelse .{
+                .installable = .{
+                    .cmd_name = "test-stdx",
+                    .cmd_desc = "Build/run stdx's unit tests",
+                    .install_dir = "tests",
+                    .install_only = config.install_tests_only,
                 },
             },
-        });
+        },
+    });
 
-        tests = .{
-            .harness_tests = harness_tests,
-            .stdx_tests = stdx_tests,
-        };
-        try tests.?.configure(b, config.cdb_steps, test_install_dir, config.install_tests_only);
-    }
+    const tests: TestArtifacts = .{
+        .harness_tests = harness_tests,
+        .stdx_tests = stdx_tests,
+    };
+    try tests.configure(b, config.cdb_steps, "tests", config.install_tests_only);
 
     return .{ .libstdx = libstdx, .tests = tests };
 }
@@ -283,16 +309,19 @@ fn addTooling(b: *std.Build, config: struct {
     cdb_gen: ?*CDBGenerator,
     cppcheck: *std.Build.Step.Compile,
 }) !void {
-    const tooling_sources = try ProjectPaths.collectCXXToolingFiles(b);
-    try addFmtStep(b, tooling_sources);
+    const paths = try ProjectPaths.collectToolingPaths(b);
+    _ = steps.addFmt(b, .{
+        .zig_paths = paths.zig_paths,
+        .cxx_paths = paths.cxx_paths,
+        .formatter = .{ .version = "21.1.8" },
+    }) catch {};
 
     if (config.cdb_gen) |cdb_gen| {
         const cdb_step = b.step("cdb", "Generate " ++ CDBGenerator.cdb_filename);
         cdb_step.dependOn(&cdb_gen.step);
         b.getInstallStep().dependOn(&cdb_gen.step);
 
-        const check_step = utils.addStaticAnalysisStep(b, .{
-            .tooling_sources = tooling_sources,
+        const check_step = steps.addCppcheck(b, .{
             .cppcheck = config.cppcheck,
             .cdb_gen = cdb_gen,
         });
@@ -313,43 +342,4 @@ fn addTooling(b: *std.Build, config: struct {
     const cloc: *LOCCounter = .init(b, counted_files);
     const cloc_step = b.step("cloc", "Count lines of code across the project");
     cloc_step.dependOn(&cloc.step);
-}
-
-fn addFmtStep(b: *std.Build, tooling_sources: []const []const u8) !void {
-    const zig_paths = try std.mem.concat(b.allocator, []const u8, &.{
-        try utils.collectFiles(b, "build", .{
-            .allowed_extensions = &.{".zig"},
-            .extra_files = &.{
-                "build.zig",
-                "build.zig.zon",
-            },
-        }),
-        try utils.collectFiles(b, "tools", .{ .allowed_extensions = &.{".zig"} }),
-    });
-    const build_fmt = b.addFmt(.{ .paths = zig_paths });
-    const build_fmt_check = b.addFmt(.{ .paths = zig_paths, .check = true });
-
-    const clang_format_version = "21.1.8";
-    const clang_format_path = b.findProgram(&.{"clang-format"}, &.{}) catch return;
-    if (!std.mem.containsAtLeast(u8, b.run(&.{ clang_format_path, "--version" }), 1, clang_format_version)) {
-        std.log.warn(
-            "Skipping clang-format configuration as v{s} is required but could not be found",
-            .{clang_format_version},
-        );
-        return;
-    }
-
-    const formatter = b.addSystemCommand(&.{clang_format_path});
-    formatter.addArg("-i");
-    formatter.addArgs(tooling_sources);
-    const fmt_step = b.step("fmt", "Format all project files");
-    fmt_step.dependOn(&formatter.step);
-    fmt_step.dependOn(&build_fmt.step);
-
-    const fmt_check = b.addSystemCommand(&.{clang_format_path});
-    fmt_check.addArgs(&.{ "--dry-run", "--Werror" });
-    fmt_check.addArgs(tooling_sources);
-    const fmt_check_step = b.step("fmt-check", "Check formatting of all project files");
-    fmt_check_step.dependOn(&fmt_check.step);
-    fmt_check_step.dependOn(&build_fmt_check.step);
 }

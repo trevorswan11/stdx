@@ -37,16 +37,19 @@ kcov_system_lib: Artifact = undefined,
 kcov_exe: Artifact = undefined,
 
 bin_to_c_source_files: kcov.BinToCSourceFiles = undefined,
-signer: ?*std.Build.Step.Run = null,
+
+pub fn allowedTarget(target: std.Build.ResolvedTarget) bool {
+    return switch (target.result.os.tag) {
+        .macos, .linux, .freebsd => return true,
+        else => return false,
+    };
+}
 
 /// Builds kcov from source.
 /// https://github.com/allyourcodebase/kcov
 pub fn build(b: *std.Build, config: Config) ?*Self {
     const target = config.target;
-    switch (target.result.os.tag) {
-        .macos, .linux, .freebsd => {},
-        else => return null,
-    }
+    if (!allowedTarget(target)) return null;
 
     var binutils: ?*BinutilsBuilder = null;
     const needs_binutils = target.result.cpu.arch.isX86();
@@ -310,75 +313,4 @@ fn buildKcov(self: *const Self) Artifact {
         .name = "kcov",
         .root_module = mod,
     });
-}
-
-pub const RunKcovConfig = struct {
-    include_patterns: ?[]const []const u8 = null,
-    exclude_patterns: ?[]const []const u8 = null,
-    artifact: Artifact,
-};
-
-pub const RunKcovReport = struct {
-    runner: *std.Build.Step.Run,
-    output_dir: std.Build.LazyPath,
-    generated_dirname: []const u8,
-};
-
-/// Runs kcov with the given configuration, returning the generated command and directory.
-///
-/// Can only error on macos if the `codesign` tool is not found.
-pub fn runKcov(self: *Self, config: RunKcovConfig) !RunKcovReport {
-    const b = self.b;
-    const target = self.metadata.config.target;
-    if (target.result.os.tag.isDarwin()) {
-        const codesign = b.findProgram(&.{"codesign"}, &.{"usr"}) catch return error.CodesignNotFound;
-        const run = b.addSystemCommand(&.{codesign});
-        run.addArgs(&.{ "-s", "-", "--entitlements" });
-        run.addFileArg(self.metadata.root.path(b, "osx-entitlements.xml"));
-        run.addArg("-f");
-        run.addArtifactArg(self.kcov_exe);
-
-        _ = run.captureStdOut(.{});
-        _ = run.captureStdErr(.{});
-        self.signer = run;
-    }
-
-    const run = b.addRunArtifact(self.kcov_exe);
-    if (self.signer) |signer| run.step.dependOn(&signer.step);
-    run.has_side_effects = true;
-    if (config.include_patterns) |include_patterns| {
-        const includes = std.mem.join(b.allocator, ",", include_patterns) catch @panic("OOM");
-        run.addArg(b.fmt("--include-pattern={s}", .{includes}));
-    }
-
-    if (config.exclude_patterns) |exclude_patterns| {
-        const excludes = std.mem.join(b.allocator, ",", exclude_patterns) catch @panic("OOM");
-        run.addArg(b.fmt("--exclude-pattern={s}", .{excludes}));
-    }
-
-    const gendir = b.fmt("kcov-{s}", .{config.artifact.name});
-    const output = run.addOutputDirectoryArg(gendir);
-    run.addArtifactArg(config.artifact);
-    return .{
-        .runner = run,
-        .output_dir = output,
-        .generated_dirname = gendir,
-    };
-}
-
-pub const MergeKcovResult = struct {
-    runner: *std.Build.Step.Run,
-    output_dir: std.Build.LazyPath,
-};
-
-pub fn mergeKcovReports(self: *Self, reports: []const RunKcovReport) MergeKcovResult {
-    const b = self.b;
-    const run = b.addRunArtifact(self.kcov_exe);
-    run.addArg("--merge");
-    const output = run.addOutputDirectoryArg("kcov-merged");
-    for (reports) |report| {
-        run.addDirectoryArg(report.output_dir);
-    }
-
-    return .{ .runner = run, .output_dir = output };
 }

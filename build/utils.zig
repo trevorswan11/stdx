@@ -170,63 +170,6 @@ pub fn createExecutable(
     return exe;
 }
 
-pub fn addStaticAnalysisStep(b: *std.Build, config: struct {
-    tooling_sources: []const []const u8,
-    cppcheck: *std.Build.Step.Compile,
-    cdb_gen: *CDBGenerator,
-    /// Example: "--suppress=*:*llvm/*"
-    extra_suppress_patterns: ?[]const []const u8 = null,
-    suppressions: ?[]const []const u8 = &.{
-        "checkersReport",
-        "unmatchedSuppression",
-        "missingIncludeSystem",
-        "unusedFunction",
-        "functionStatic",
-    },
-    /// Relative to build root
-    ignore_paths: ?[]const []const u8 = null,
-}) *std.Build.Step {
-    const check_step = b.step("check", "Run static analysis on all project files");
-    const cppcheck_run = b.addRunArtifact(config.cppcheck);
-
-    const installed_cppcheck_cache_path = b.cache_root.join(b.allocator, &.{"cppcheck"}) catch @panic("OOM");
-    cppcheck_run.addArg("--inline-suppr");
-    cppcheck_run.addPrefixedFileArg("--project=", config.cdb_gen.getCdbPath());
-    const cppcheck_cache = cppcheck_run.addPrefixedOutputDirectoryArg(
-        "--cppcheck-build-dir=",
-        installed_cppcheck_cache_path,
-    );
-    cppcheck_run.addArg("--check-level=exhaustive");
-    cppcheck_run.addArgs(&.{ "--error-exitcode=1", "--enable=all" });
-    cppcheck_run.addArgs(&.{
-        "--suppress=*:magic_enum.hpp",
-        "--suppress=*:.zig-cache/*",
-    });
-
-    if (config.extra_suppress_patterns) |extra_suppress_patterns| {
-        cppcheck_run.addArgs(extra_suppress_patterns);
-    }
-
-    if (config.suppressions) |suppressions| for (suppressions) |suppression| {
-        cppcheck_run.addArg(b.fmt("--suppress={s}", .{suppression}));
-    };
-
-    if (config.ignore_paths) |ignore_paths| for (ignore_paths) |ignore_path| {
-        cppcheck_run.addPrefixedDirectoryArg("-i", b.path(ignore_path));
-    };
-
-    const cppcheck_cache_install = b.addInstallDirectory(.{
-        .source_dir = cppcheck_cache,
-        .install_dir = .{ .custom = ".." },
-        .install_subdir = installed_cppcheck_cache_path,
-    });
-
-    cppcheck_cache_install.step.dependOn(&config.cppcheck.step);
-    check_step.dependOn(&cppcheck_cache_install.step);
-    check_step.dependOn(&cppcheck_run.step);
-    return check_step;
-}
-
 pub const CollectFilesConfig = struct {
     allowed_extensions: []const []const u8 = &.{".cc"},
     dropped_files: ?[]const []const u8 = null,

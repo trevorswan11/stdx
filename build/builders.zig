@@ -10,6 +10,7 @@ pub const BuildStrappedTestConfig = struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     libstdx: *std.Build.Step.Compile,
+    libcatch2: *std.Build.Step.Compile,
     /// The test hook is added automatically
     cxx_files: []const []const u8,
     cxx_flags: []const []const u8,
@@ -27,14 +28,9 @@ pub const BuildStrappedTestConfig = struct {
 ///
 /// Call this with stdx's builder
 pub fn strappedTest(b: *std.Build, config: BuildStrappedTestConfig) *std.Build.Step.Compile {
-    const catch2_dep = catch2.build(b, .{
-        .target = config.target,
-        .optimize = config.optimize,
-    });
-
     const link_libraries = std.mem.concat(b.allocator, *std.Build.Step.Compile, &.{
         config.link_libraries,
-        &.{ config.libstdx, catch2_dep.artifact },
+        &.{ config.libstdx, config.libcatch2 },
     }) catch @panic("OOM");
 
     const test_exe = utils.createExecutable(config.asking_builder orelse b, .{
