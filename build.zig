@@ -19,10 +19,9 @@ pub const zstd = @import("third-party/zstd.zig");
 pub const libarchive = @import("third-party/libarchive.zig");
 
 pub fn build(b: *std.Build) !void {
-    const optimize = b.standardOptimizeOption(.{
-        .preferred_optimize_mode = .ReleaseFast,
-    });
+    const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
+
     const building_for_dep = b.option(bool, "building_for_dep", "Build for a dependency") orelse false;
     const run_cdb_gen = b.option(bool, "run_cdb_gen", "Run cdb generation") orelse true;
 
