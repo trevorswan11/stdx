@@ -22,8 +22,11 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{
         .preferred_optimize_mode = .ReleaseFast,
     });
-    const cdb_gen: *CDBGenerator = .init(b);
+    const target = b.standardTargetOptions(.{});
+    const building_for_host = b.option(bool, "building_for_host", "Build for the host target") orelse true;
+    const run_cdb_gen = b.option(bool, "run_cdb_gen", "Run cdb generation") orelse true;
 
+    const cdb_gen_opt: ?*CDBGenerator = if (run_cdb_gen) CDBGenerator.init(b) else null;
     var compiler_flags: std.ArrayList([]const u8) = .empty;
     try compiler_flags.appendSlice(b.allocator, &utils.base_cxx_flags);
     try compiler_flags.append(b.allocator, "-DMAGIC_ENUM_RANGE_MAX=255");
@@ -55,31 +58,38 @@ pub fn build(b: *std.Build) !void {
 
     var cdb_steps: std.ArrayList(*std.Build.Step) = .empty;
     const artifacts = try addArtifacts(b, .{
+        .target = target,
         .optimize = optimize,
         .cxx_flags = compiler_flags.items,
-        .cdb_steps = &cdb_steps,
+        .cdb_steps = if (run_cdb_gen) &cdb_steps else null,
         .install_tests_only = install_tests_only,
-    });
-    for (cdb_steps.items) |cdb_step| cdb_gen.step.dependOn(cdb_step);
-
-    try addTooling(b, .{
-        .cdb_gen = cdb_gen,
-        .cppcheck = artifacts.cppcheck.?,
+        .building_for_host = building_for_host,
     });
 
-    if (artifacts.tests) |tests| try CoverageParser.addStep(b, &[_]KcovBuilder.RunKcovConfig{
-        .{
-            .artifact = tests.harness_tests,
-            .include_patterns = &.{ProjectPaths.harness},
-        },
-        .{
-            .artifact = tests.stdx_tests,
-            .include_patterns = &.{
-                try b.build_root.join(b.allocator, &.{ProjectPaths.src}),
-                try b.build_root.join(b.allocator, &.{ProjectPaths.include}),
+    if (cdb_gen_opt) |cdb_gen| {
+        for (cdb_steps.items) |cdb_step| cdb_gen.step.dependOn(cdb_step);
+    }
+
+    if (building_for_host) {
+        try addTooling(b, .{
+            .cdb_gen = cdb_gen_opt,
+            .cppcheck = artifacts.cppcheck.?,
+        });
+
+        if (artifacts.tests) |tests| try CoverageParser.addStep(b, &[_]KcovBuilder.RunKcovConfig{
+            .{
+                .artifact = tests.harness_tests,
+                .include_patterns = &.{ProjectPaths.harness},
             },
-        },
-    });
+            .{
+                .artifact = tests.stdx_tests,
+                .include_patterns = &.{
+                    try b.build_root.join(b.allocator, &.{ProjectPaths.src}),
+                    try b.build_root.join(b.allocator, &.{ProjectPaths.include}),
+                },
+            },
+        });
+    }
 }
 
 const ProjectPaths = struct {
@@ -202,22 +212,21 @@ fn buildStdx(b: *std.Build, config: struct {
 }
 
 fn addArtifacts(b: *std.Build, config: struct {
-    target: ?std.Build.ResolvedTarget = null,
+    target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     cxx_flags: []const []const u8,
     cdb_steps: ?*std.ArrayList(*std.Build.Step),
     behavior: ?utils.ExecutableBehavior = null,
     auto_install: bool = true,
-    packaging: bool = false,
     install_tests_only: bool = true,
+    building_for_host: bool = true,
 }) !struct {
     libstdx: *std.Build.Step.Compile,
     compressor: *std.Build.Step.Compile,
     tests: ?TestArtifacts,
     cppcheck: ?*std.Build.Step.Compile,
 } {
-    const target = config.target orelse b.graph.host;
-    const building_for_host = config.target == null;
+    const target = config.target;
     const libstdx = try buildStdx(b, .{
         .optimize = config.optimize,
         .target = target,
@@ -229,7 +238,7 @@ fn addArtifacts(b: *std.Build, config: struct {
     const compressor = buildCompressor(b);
 
     var tests: ?TestArtifacts = null;
-    if (building_for_host) {
+    if (config.building_for_host) {
         const test_install_dir: ?[]const u8 = if (config.auto_install) "tests" else null;
         const harness_main = b.path(ProjectPaths.harness ++ "main.zig");
         const catch2_dep = catch2.build(b, .{
@@ -292,7 +301,7 @@ fn addArtifacts(b: *std.Build, config: struct {
         try tests.?.configure(b, config.cdb_steps, test_install_dir, config.install_tests_only);
     }
 
-    const cppcheck_dep: ?Dependency = if (building_for_host) try cppcheck.build(b, .{
+    const cppcheck_dep: ?Dependency = if (config.building_for_host) try cppcheck.build(b, .{
         .target = target,
         .optimize = .ReleaseFast,
     }) else null;
@@ -306,22 +315,24 @@ fn addArtifacts(b: *std.Build, config: struct {
 }
 
 fn addTooling(b: *std.Build, config: struct {
-    cdb_gen: *CDBGenerator,
+    cdb_gen: ?*CDBGenerator,
     cppcheck: *std.Build.Step.Compile,
 }) !void {
     const tooling_sources = try ProjectPaths.collectCXXToolingFiles(b);
-
-    const cdb_step = b.step("cdb", "Generate " ++ CDBGenerator.cdb_filename);
-    cdb_step.dependOn(&config.cdb_gen.step);
-    b.getInstallStep().dependOn(&config.cdb_gen.step);
-
     try addFmtStep(b, tooling_sources);
-    const check_step = utils.addStaticAnalysisStep(b, .{
-        .tooling_sources = tooling_sources,
-        .cppcheck = config.cppcheck,
-        .cdb_gen = config.cdb_gen,
-    });
-    check_step.dependOn(&config.cdb_gen.step);
+
+    if (config.cdb_gen) |cdb_gen| {
+        const cdb_step = b.step("cdb", "Generate " ++ CDBGenerator.cdb_filename);
+        cdb_step.dependOn(&cdb_gen.step);
+        b.getInstallStep().dependOn(&cdb_gen.step);
+
+        const check_step = utils.addStaticAnalysisStep(b, .{
+            .tooling_sources = tooling_sources,
+            .cppcheck = config.cppcheck,
+            .cdb_gen = cdb_gen,
+        });
+        check_step.dependOn(&cdb_gen.step);
+    }
 
     const counted_extensions = [_][]const u8{ ".cc", ".hh", ".zig" };
     const counted_files = try std.mem.concat(b.allocator, []const u8, &.{
