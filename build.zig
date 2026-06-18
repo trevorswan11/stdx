@@ -174,7 +174,7 @@ fn buildStdx(b: *std.Build, config: struct {
 
     // Shared core functionality
     const libstdx = b.addLibrary(.{
-        .name = "support",
+        .name = "stdx",
         .root_module = utils.createModule(b, .{
             .target = target,
             .optimize = config.optimize,
