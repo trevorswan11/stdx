@@ -313,6 +313,8 @@ pub fn buildStrappedTest(b: *std.Build, config: struct {
     link_libraries: []const *std.Build.Step.Compile = &.{},
     include_paths: []const std.Build.LazyPath = &.{},
     executable_config: utils.CreateExecutableConfig,
+    /// The builder who has stdx as a dependency, defaulting to `b`
+    asking_builder: ?*std.Build,
 }) *std.Build.Step.Compile {
     const cxx_files = std.mem.concat(b.allocator, []const u8, &.{
         config.cxx_files,
@@ -329,7 +331,7 @@ pub fn buildStrappedTest(b: *std.Build, config: struct {
         &.{ config.libstdx, catch2_dep.artifact },
     }) catch @panic("OOM");
 
-    return utils.createExecutable(b, .{
+    return utils.createExecutable(config.asking_builder orelse b, .{
         .target = config.target,
         .optimize = config.optimize,
         .zig_main = b.path(ProjectPaths.harness ++ "main.zig"),
