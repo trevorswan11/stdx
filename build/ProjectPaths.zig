@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const utils = @import("utils.zig");
+const steps = @import("steps.zig");
 
 pub const include = "include/";
 pub const src = "src/";
@@ -10,10 +11,7 @@ pub const harness = tools ++ "harness/";
 pub const compressor = tools ++ "compressor/";
 pub const build = "build/";
 
-pub fn collectToolingPaths(b: *std.Build) !struct {
-    zig_paths: []const []const u8,
-    cxx_paths: []const []const u8,
-} {
+pub fn collectToolingPaths(b: *std.Build) !steps.FmtPaths {
     const zig_paths = try std.mem.concat(b.allocator, []const u8, &.{
         try utils.collectFiles(b, build, .{
             .allowed_extensions = &.{".zig"},
@@ -31,5 +29,5 @@ pub fn collectToolingPaths(b: *std.Build) !struct {
         try utils.collectFiles(b, tests, .{ .allowed_extensions = &.{ ".hh", ".cc" } }),
     });
 
-    return .{ .zig_paths = zig_paths, .cxx_paths = cxx_paths };
+    return .{ .zig = zig_paths, .cxx = cxx_paths };
 }

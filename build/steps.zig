@@ -6,9 +6,13 @@ const CDBGenerator = @import("CDBGenerator.zig");
 const RemoveDir = @import("RemoveDir.zig");
 const CoverageParser = @import("CoverageParser.zig");
 
+pub const FmtPaths = struct {
+    zig: []const []const u8,
+    cxx: []const []const u8,
+};
+
 pub const FmtStepConfig = struct {
-    zig_paths: []const []const u8,
-    cxx_paths: []const []const u8,
+    paths: FmtPaths,
     formatter: union(enum) {
         /// Can error if clang-format is not found or is not the right version
         version: []const u8,
@@ -38,16 +42,16 @@ pub fn addFmt(b: *std.Build, config: FmtStepConfig) !struct {
         .artifact => |artifact| .{ b.addRunArtifact(artifact), b.addRunArtifact(artifact) },
     };
 
-    const zig_fmt = b.addFmt(.{ .paths = config.zig_paths });
+    const zig_fmt = b.addFmt(.{ .paths = config.paths.zig });
     formatter.addArg("-i");
-    formatter.addArgs(config.cxx_paths);
+    formatter.addArgs(config.paths.cxx);
     const fmt_step = b.step("fmt", "Format all project files");
     fmt_step.dependOn(&formatter.step);
     fmt_step.dependOn(&zig_fmt.step);
 
-    const zig_fmt_check = b.addFmt(.{ .paths = config.zig_paths, .check = true });
+    const zig_fmt_check = b.addFmt(.{ .paths = config.paths.zig, .check = true });
     checker.addArgs(&.{ "--dry-run", "--Werror" });
-    checker.addArgs(config.cxx_paths);
+    checker.addArgs(config.paths.cxx);
     const fmt_check_step = b.step("fmt-check", "Check formatting of all project files");
     fmt_check_step.dependOn(&checker.step);
     fmt_check_step.dependOn(&zig_fmt_check.step);

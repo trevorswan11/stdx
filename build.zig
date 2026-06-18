@@ -319,10 +319,8 @@ fn addTooling(b: *std.Build, config: struct {
     cdb_gen: ?*CDBGenerator,
     cppcheck: ?*std.Build.Step.Compile,
 }) !void {
-    const paths = try ProjectPaths.collectToolingPaths(b);
     _ = steps.addFmt(b, .{
-        .zig_paths = paths.zig_paths,
-        .cxx_paths = paths.cxx_paths,
+        .paths = try ProjectPaths.collectToolingPaths(b),
         .formatter = .{ .version = "21.1.8" },
     }) catch {};
 
