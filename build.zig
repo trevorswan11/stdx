@@ -329,9 +329,11 @@ fn addFmtStep(b: *std.Build, tooling_sources: []const []const u8) !void {
     const build_fmt = b.addFmt(.{ .paths = zig_paths });
     const build_fmt_check = b.addFmt(.{ .paths = zig_paths, .check = true });
 
-    const clang_format_path = try b.findProgram(&.{"clang-format"}, &.{});
-    if (!std.mem.containsAtLeast(u8, b.run(&.{ clang_format_path, "--version" }), 1, "21.1.8")) {
-        return error.InvalidClangFormatNeed21_1_8;
+    const clang_format_version = "21.1.8";
+    const clang_format_path = b.findProgram(&.{"clang-format"}, &.{}) catch return;
+    if (!std.mem.containsAtLeast(u8, b.run(&.{ clang_format_path, "--version" }), 1, clang_format_version)) {
+        std.log.err("Skipping clang-format as v{s} is required but could not be found", .{clang_format_version});
+        return;
     }
 
     const formatter = b.addSystemCommand(&.{clang_format_path});

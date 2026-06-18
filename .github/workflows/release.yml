@@ -1,0 +1,58 @@
+name: Release CI
+
+on:
+    push:
+        tags:
+            - "v*"
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    release:
+        permissions:
+            contents: write
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                include:
+                    - os: ubuntu-latest
+                    - os: macos-latest
+                    - os: windows-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 1
+
+            - uses: mlugg/setup-zig@v2
+              with:
+                  version: 0.16.0
+
+            - name: Fetch dependencies
+              uses: nick-fields/retry@v3
+              with:
+                  timeout_minutes: 10
+                  max_attempts: 4
+                  retry_wait_seconds: 30
+                  command: zig build --fetch=all
+
+            - name: Build and test (debug)
+              run: |
+                  zig build test
+                  zig build test -Doptimize=ReleaseFast
+
+            - name: Check formatting
+              if: matrix.runner == 'ubuntu-latest'
+              run: |
+                  wget https://apt.llvm.org/llvm.sh
+                  chmod +x llvm.sh
+                  sudo ./llvm.sh 21
+                  sudo apt-get install -y clang-format-21
+                  sudo ln -sf /usr/bin/clang-format-21 /usr/bin/clang-format
+                  zig build fmt-check
+
+            - name: Static Analysis
+              run: zig build check
