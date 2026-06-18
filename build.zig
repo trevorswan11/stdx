@@ -6,6 +6,7 @@ pub const CDBGenerator = @import("build/CDBGenerator.zig");
 pub const RemoveDir = @import("build/RemoveDir.zig");
 pub const LOCCounter = @import("build/LOCCounter.zig");
 pub const CoverageParser = @import("build/CoverageParser.zig");
+const ProjectPaths = @import("build/ProjectPaths.zig");
 
 pub const Dependency = @import("third-party/Dependency.zig");
 pub const KcovBuilder = @import("third-party/kcov/KcovBuilder.zig");
@@ -87,22 +88,6 @@ pub fn build(b: *std.Build) !void {
         });
     }
 }
-
-const ProjectPaths = struct {
-    const include = "include/";
-    const src = "src/";
-    const tests = "tests/";
-    const harness = "tools/harness/";
-    const compressor = "tools/compressor/";
-
-    pub fn collectCXXToolingFiles(b: *std.Build) ![]const []const u8 {
-        return std.mem.concat(b.allocator, []const u8, &.{
-            try utils.collectFiles(b, include, .{ .allowed_extensions = &.{".hh"} }),
-            try utils.collectFiles(b, src, .{ .allowed_extensions = &.{".cc"} }),
-            try utils.collectFiles(b, tests, .{ .allowed_extensions = &.{ ".hh", ".cc" } }),
-        });
-    }
-};
 
 const TestArtifacts = struct {
     harness_tests: *std.Build.Step.Compile = undefined,
@@ -256,7 +241,7 @@ fn addArtifacts(b: *std.Build, config: struct {
             config.install_tests_only,
         );
 
-        const stdx_tests = buildStrappedTest(b, .{
+        const stdx_tests = utils.buildStrappedTest(b, .{
             .target = config.target,
             .optimize = config.optimize,
             .libstdx = libstdx,
@@ -296,56 +281,6 @@ fn addArtifacts(b: *std.Build, config: struct {
         .tests = tests,
         .cppcheck = if (cppcheck_dep) |dep| dep.artifact else null,
     };
-}
-
-/// Build's a zig-harness-driven catch2 test artifact
-///
-/// Call this with the dependencies builder
-pub fn buildStrappedTest(b: *std.Build, config: struct {
-    target: std.Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
-    libstdx: *std.Build.Step.Compile,
-    /// The test hook is added automatically
-    cxx_files: []const []const u8,
-    cxx_flags: []const []const u8,
-    /// Catch2 and libstdx are added automatically
-    link_libraries: []const *std.Build.Step.Compile = &.{},
-    include_paths: []const std.Build.LazyPath = &.{},
-    config_headers: []const *std.Build.Step.ConfigHeader = &.{},
-    system_include_paths: []const std.Build.LazyPath = &.{},
-    executable_config: utils.CreateExecutableConfig,
-    /// The builder who has stdx as a dependency, defaulting to `b`
-    asking_builder: ?*std.Build = null,
-}) *std.Build.Step.Compile {
-    const catch2_dep = catch2.build(b, .{
-        .target = config.target,
-        .optimize = config.optimize,
-    });
-
-    const link_libraries = std.mem.concat(b.allocator, *std.Build.Step.Compile, &.{
-        config.link_libraries,
-        &.{ config.libstdx, catch2_dep.artifact },
-    }) catch @panic("OOM");
-
-    const test_exe = utils.createExecutable(config.asking_builder orelse b, .{
-        .target = config.target,
-        .optimize = config.optimize,
-        .zig_main = b.path(ProjectPaths.harness ++ "main.zig"),
-        .include_paths = config.include_paths,
-        .config_headers = config.config_headers,
-        .system_include_paths = config.system_include_paths,
-        .cxx = .{
-            .files = config.cxx_files,
-            .flags = config.cxx_flags,
-        },
-        .link_libraries = link_libraries,
-    }, config.executable_config);
-
-    test_exe.root_module.addCSourceFile(.{
-        .file = b.path(ProjectPaths.harness ++ "runner.cc"),
-        .flags = config.cxx_flags,
-    });
-    return test_exe;
 }
 
 fn addTooling(b: *std.Build, config: struct {
@@ -413,36 +348,4 @@ fn addFmtStep(b: *std.Build, tooling_sources: []const []const u8) !void {
     const fmt_check_step = b.step("fmt-check", "Check formatting of all project files");
     fmt_check_step.dependOn(&fmt_check.step);
     fmt_check_step.dependOn(&build_fmt_check.step);
-}
-
-pub fn buildCompressor(b: *std.Build) *std.Build.Step.Compile {
-    const libarchive_dep = libarchive.build(b, .{
-        .target = b.graph.host,
-        .optimize = .ReleaseFast,
-    });
-
-    const headers = b.addTranslateC(.{
-        .root_source_file = b.path(ProjectPaths.compressor ++ "c.h"),
-        .target = b.graph.host,
-        .optimize = .ReleaseFast,
-    });
-    headers.addIncludePath(libarchive_dep.artifact.getEmittedIncludeTree());
-
-    const compressor = utils.createExecutable(b, .{
-        .zig_main = b.path(ProjectPaths.compressor ++ "main.zig"),
-        .target = b.graph.host,
-        .optimize = .ReleaseFast,
-        .link_libraries = &.{libarchive_dep.artifact},
-        .imports = &.{
-            .{
-                .name = "c",
-                .module = headers.createModule(),
-            },
-        },
-    }, .{
-        .name = "compressor",
-        .behavior = .standalone,
-    });
-    Dependency.addFrameworkSearchPaths(compressor.root_module, b.graph.host);
-    return compressor;
 }
