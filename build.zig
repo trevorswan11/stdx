@@ -332,7 +332,10 @@ fn addFmtStep(b: *std.Build, tooling_sources: []const []const u8) !void {
     const clang_format_version = "21.1.8";
     const clang_format_path = b.findProgram(&.{"clang-format"}, &.{}) catch return;
     if (!std.mem.containsAtLeast(u8, b.run(&.{ clang_format_path, "--version" }), 1, clang_format_version)) {
-        std.log.err("Skipping clang-format as v{s} is required but could not be found", .{clang_format_version});
+        std.log.warn(
+            "Skipping clang-format configuration as v{s} is required but could not be found",
+            .{clang_format_version},
+        );
         return;
     }
 

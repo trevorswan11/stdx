@@ -40,12 +40,13 @@ jobs:
                   command: zig build --fetch=all
 
             - name: Build and test (debug)
-              run: |
-                  zig build test
-                  zig build test -Doptimize=ReleaseFast
+              run: zig build test
+
+            - name: Build and test (release)
+              run: zig build test -Doptimize=ReleaseFast
 
             - name: Check formatting
-              if: matrix.runner == 'ubuntu-latest'
+              if: matrix.os == 'ubuntu-latest'
               run: |
                   wget https://apt.llvm.org/llvm.sh
                   chmod +x llvm.sh
