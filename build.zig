@@ -317,11 +317,6 @@ pub fn buildStrappedTest(b: *std.Build, config: struct {
     /// The builder who has stdx as a dependency, defaulting to `b`
     asking_builder: ?*std.Build = null,
 }) *std.Build.Step.Compile {
-    const cxx_files = std.mem.concat(b.allocator, []const u8, &.{
-        config.cxx_files,
-        &.{ProjectPaths.harness ++ "runner.cc"},
-    }) catch @panic("OOM");
-
     const catch2_dep = catch2.build(b, .{
         .target = config.target,
         .optimize = config.optimize,
@@ -332,18 +327,24 @@ pub fn buildStrappedTest(b: *std.Build, config: struct {
         &.{ config.libstdx, catch2_dep.artifact },
     }) catch @panic("OOM");
 
-    return utils.createExecutable(config.asking_builder orelse b, .{
+    const test_exe = utils.createExecutable(config.asking_builder orelse b, .{
         .target = config.target,
         .optimize = config.optimize,
         .zig_main = b.path(ProjectPaths.harness ++ "main.zig"),
         .include_paths = config.include_paths,
         .config_headers = config.config_headers,
         .cxx = .{
-            .files = cxx_files,
+            .files = config.cxx_files,
             .flags = config.cxx_flags,
         },
         .link_libraries = link_libraries,
     }, config.executable_config);
+
+    test_exe.root_module.addCSourceFile(.{
+        .file = b.path(ProjectPaths.harness ++ "runner.cc"),
+        .flags = config.cxx_flags,
+    });
+    return test_exe;
 }
 
 fn addTooling(b: *std.Build, config: struct {
