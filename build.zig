@@ -69,9 +69,14 @@ pub fn build(b: *std.Build) !void {
     }
 
     if (!building_for_dep) {
+        const cppcheck_dep = try cppcheck.build(b, .{
+            .target = b.graph.host,
+            .optimize = .ReleaseFast,
+        });
+
         try addTooling(b, .{
             .cdb_gen = cdb_gen_opt,
-            .cppcheck = artifacts.cppcheck.?,
+            .cppcheck = cppcheck_dep.artifact,
         });
 
         if (artifacts.tests) |tests| try CoverageParser.addStep(b, &[_]KcovBuilder.RunKcovConfig{
@@ -207,7 +212,6 @@ fn addArtifacts(b: *std.Build, config: struct {
 }) !struct {
     libstdx: *std.Build.Step.Compile,
     tests: ?TestArtifacts,
-    cppcheck: ?*std.Build.Step.Compile,
 } {
     const libstdx = try buildStdx(b, .{
         .optimize = config.optimize,
@@ -272,16 +276,7 @@ fn addArtifacts(b: *std.Build, config: struct {
         try tests.?.configure(b, config.cdb_steps, test_install_dir, config.install_tests_only);
     }
 
-    const cppcheck_dep: ?Dependency = if (!config.building_for_dep) try cppcheck.build(b, .{
-        .target = config.target,
-        .optimize = .ReleaseFast,
-    }) else null;
-
-    return .{
-        .libstdx = libstdx,
-        .tests = tests,
-        .cppcheck = if (cppcheck_dep) |dep| dep.artifact else null,
-    };
+    return .{ .libstdx = libstdx, .tests = tests };
 }
 
 fn addTooling(b: *std.Build, config: struct {
