@@ -219,9 +219,13 @@ pub fn collectFiles(
     return paths.items;
 }
 
-pub fn tryAppendExe(b: *std.Build, raw_path: []const u8) []const u8 {
-    return b.fmt("{s}{s}", .{
-        raw_path,
-        if (b.graph.host.result.os.tag == .windows) ".exe" else "",
-    });
+pub fn tryAppendExe(
+    allocator: std.mem.Allocator,
+    target: std.Build.ResolvedTarget,
+    raw_path: []const u8,
+) []const u8 {
+    if (target.result.os.tag == .windows) {
+        return std.fmt.allocPrint(allocator, "{s}.exe", .{raw_path}) catch @panic("OOM");
+    }
+    return allocator.dupe(u8, raw_path) catch @panic("OOM");
 }
