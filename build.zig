@@ -36,9 +36,8 @@ pub fn build(b: *std.Build) !void {
     try compiler_flags.append(b.allocator, "-DMAGIC_ENUM_RANGE_MAX=255");
     const dist_flags: []const []const u8 = &.{ "-DNDEBUG", "-DSTDX_DIST" };
 
-    if (b.option(bool, "profile", "Enable chromium tracing") orelse false) {
-        try compiler_flags.append(b.allocator, "-DSTDX_PROFILE");
-    }
+    const profile = b.option(bool, "profile", "Enable chromium tracing") orelse false;
+    if (profile) try compiler_flags.append(b.allocator, builders.stdx_profile_define);
 
     if (run_cdb_gen) try compiler_flags.appendSlice(b.allocator, &.{
         "-gen-cdb-fragment-path",
@@ -66,6 +65,7 @@ pub fn build(b: *std.Build) !void {
         .install_tests_only = install_tests_only,
         .building_for_dep = building_for_dep,
         .packaging = packaging,
+        .profile = profile,
     });
 
     if (cdb_gen_opt) |cdb_gen| {
@@ -238,6 +238,7 @@ fn addArtifacts(b: *std.Build, config: struct {
     install_tests_only: bool = true,
     building_for_dep: bool = true,
     packaging: bool = false,
+    profile: bool,
 }) !struct {
     libstdx: *std.Build.Step.Compile,
     tests: ?TestArtifacts,
@@ -290,6 +291,7 @@ fn addArtifacts(b: *std.Build, config: struct {
         .libcatch2 = catch2_dep.?.artifact,
         .cxx_files = try utils.collectFiles(b, ProjectPaths.tests, .{}),
         .cxx_flags = config.cxx_flags,
+        .profile = config.profile,
         .include_paths = &.{
             b.path(ProjectPaths.include),
             b.path(ProjectPaths.tests),

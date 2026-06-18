@@ -6,6 +6,8 @@ const utils = @import("utils.zig");
 const catch2 = @import("../third-party/catch2.zig");
 const libarchive = @import("../third-party/libarchive.zig");
 
+pub const stdx_profile_define = "-DSTDX_PROFILE";
+
 pub const BuildStrappedTestConfig = struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
@@ -14,6 +16,7 @@ pub const BuildStrappedTestConfig = struct {
     /// The test hook is added automatically
     cxx_files: []const []const u8,
     cxx_flags: []const []const u8,
+    profile: bool,
     /// Catch2 and libstdx are added automatically
     link_libraries: []const *std.Build.Step.Compile = &.{},
     include_paths: []const std.Build.LazyPath = &.{},
@@ -51,6 +54,10 @@ pub fn strappedTest(b: *std.Build, config: BuildStrappedTestConfig) *std.Build.S
         .file = b.path(ProjectPaths.harness ++ "runner.cc"),
         .flags = config.cxx_flags,
     });
+
+    if (config.profile) {
+        test_exe.root_module.c_macros.append(b.allocator, stdx_profile_define) catch @panic("OOM");
+    }
     return test_exe;
 }
 
