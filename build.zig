@@ -152,7 +152,6 @@ fn buildStdx(b: *std.Build, config: struct {
         .STDX_VERSION_MINOR = @as(i64, version.minor),
         .STDX_VERSION_PATCH = @as(i64, version.patch),
         .STDX_VERSION_PRE = version.pre orelse "",
-        .STDX_GIT_INFO = utils.getGitInfo(b),
         .STDX_WINDOWS = target.result.os.tag == .windows,
         .STDX_LINUX = target.result.os.tag == .linux,
         .STDX_APPLE = target.result.os.tag == .macos,
@@ -313,6 +312,7 @@ pub fn buildStrappedTest(b: *std.Build, config: struct {
     link_libraries: []const *std.Build.Step.Compile = &.{},
     include_paths: []const std.Build.LazyPath = &.{},
     config_headers: []const *std.Build.Step.ConfigHeader = &.{},
+    system_include_paths: []const std.Build.LazyPath = &.{},
     executable_config: utils.CreateExecutableConfig,
     /// The builder who has stdx as a dependency, defaulting to `b`
     asking_builder: ?*std.Build = null,
@@ -333,6 +333,7 @@ pub fn buildStrappedTest(b: *std.Build, config: struct {
         .zig_main = b.path(ProjectPaths.harness ++ "main.zig"),
         .include_paths = config.include_paths,
         .config_headers = config.config_headers,
+        .system_include_paths = config.system_include_paths,
         .cxx = .{
             .files = config.cxx_files,
             .flags = config.cxx_flags,
