@@ -8,47 +8,47 @@
 
 namespace stdx::tests {
 
-using helpers::MockEnum;
-using helpers::MockNegativeEnum;
-using helpers::MockPositiveEnum;
-using helpers::NonMonotonicEnum;
+using helpers::mock_enum;
+using helpers::mock_negative_enum;
+using helpers::mock_positive_enum;
+using helpers::non_monotonic_enum;
 
 TEST_CASE("Enum min/max calculations") {
-    STATIC_CHECK(enum_min_underlying<MockEnum>() == 0);
-    STATIC_CHECK(enum_max_underlying<MockEnum>() == 3);
+    STATIC_CHECK(enum_min_underlying<mock_enum>() == 0);
+    STATIC_CHECK(enum_max_underlying<mock_enum>() == 3);
 
-    STATIC_CHECK(enum_min_underlying<MockPositiveEnum>() == 1);
-    STATIC_CHECK(enum_max_underlying<MockPositiveEnum>() == 4);
+    STATIC_CHECK(enum_min_underlying<mock_positive_enum>() == 1);
+    STATIC_CHECK(enum_max_underlying<mock_positive_enum>() == 4);
 
-    STATIC_CHECK(enum_min_underlying<MockNegativeEnum>() == -1);
-    STATIC_CHECK(enum_max_underlying<MockNegativeEnum>() == 2);
+    STATIC_CHECK(enum_min_underlying<mock_negative_enum>() == -1);
+    STATIC_CHECK(enum_max_underlying<mock_negative_enum>() == 2);
 
-    STATIC_CHECK(enum_min_underlying<NonMonotonicEnum>() == 0);
-    STATIC_CHECK(enum_max_underlying<NonMonotonicEnum>() == 25);
+    STATIC_CHECK(enum_min_underlying<non_monotonic_enum>() == 0);
+    STATIC_CHECK(enum_max_underlying<non_monotonic_enum>() == 25);
 }
 
 TEST_CASE("Monotonically increasing enum range") {
-    for (usize i{0}; const auto v : enum_range<MockEnum::A, MockEnum::D>()) {
-        CHECK(v == static_cast<MockEnum>(i++));
+    for (usize i{0}; const auto v : enum_range<mock_enum::A, mock_enum::D>()) {
+        CHECK(v == static_cast<mock_enum>(i++));
     }
 
-    for (usize i{0}; const auto v : enum_range<MockEnum>()) {
-        CHECK(v == static_cast<MockEnum>(i++));
+    for (usize i{0}; const auto v : enum_range<mock_enum>()) {
+        CHECK(v == static_cast<mock_enum>(i++));
     }
 }
 
 TEST_CASE("Non-monotonic enum range") {
     constexpr std::array expected{
-        NonMonotonicEnum::A,
-        NonMonotonicEnum::B,
-        NonMonotonicEnum::D,
-        NonMonotonicEnum::C,
+        non_monotonic_enum::A,
+        non_monotonic_enum::B,
+        non_monotonic_enum::D,
+        non_monotonic_enum::C,
     };
 
-    for (usize i{0}; const auto v : enum_range<NonMonotonicEnum::A, NonMonotonicEnum::D>()) {
+    for (usize i{0}; const auto v : enum_range<non_monotonic_enum::A, non_monotonic_enum::D>()) {
         CHECK(v == expected[i++]);
     }
-    for (usize i{0}; const auto v : enum_range<NonMonotonicEnum>()) { CHECK(v == expected[i++]); }
+    for (usize i{0}; const auto v : enum_range<non_monotonic_enum>()) { CHECK(v == expected[i++]); }
 }
 
 } // namespace stdx::tests

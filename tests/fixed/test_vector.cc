@@ -14,12 +14,12 @@
 
 namespace stdx::tests {
 
-TEST_CASE("StaticVector type checks") {
+TEST_CASE("fixed::vector type checks") {
     STATIC_REQUIRE(TriviallyDestructible<fixed::vector<gsl::not_null<i32*>, 4>>);
     STATIC_REQUIRE_FALSE(TriviallyDestructible<fixed::vector<box<i32>, 4>>);
 }
 
-TEST_CASE("StaticVector basic usage") {
+TEST_CASE("fixed::vector basic usage") {
     fixed::vector<i32, 5> vec;
     CHECK(vec.empty());
     CHECK(vec.size() == 0);
@@ -29,7 +29,7 @@ TEST_CASE("StaticVector basic usage") {
     CHECK_FALSE(vec.empty());
 }
 
-TEST_CASE("StaticVector iteration") {
+TEST_CASE("fixed::vector iteration") {
     fixed::vector<i32, 5> vec{1, 2, 3};
     i32                   count{0};
     i32                   sum{0};
@@ -43,14 +43,14 @@ TEST_CASE("StaticVector iteration") {
     CHECK(vec.end() == vec.begin() + count);
 }
 
-TEST_CASE("StaticVector indexing") {
+TEST_CASE("fixed::vector indexing") {
     fixed::vector<i32, 3> vec{10, 20, 30};
     CHECK(vec[0] == 10);
     CHECK(vec[1] == 20);
     CHECK(vec[2] == 30);
 }
 
-TEST_CASE("StaticVector with non-trivial type") {
+TEST_CASE("fixed::vector with non-trivial type") {
     SECTION("Contrived example") {
         struct point {
             i32 x, y;
@@ -72,7 +72,7 @@ TEST_CASE("StaticVector with non-trivial type") {
     }
 }
 
-TEST_CASE("StaticVector span conversion") {
+TEST_CASE("fixed::vector span conversion") {
     fixed::vector<i32, 4> vec{1, 2};
     gsl::span<i32>        s = vec;
     CHECK(s.size() == 2);
@@ -89,7 +89,7 @@ TEST_CASE("Vector constexpr operations") {
 
 using tracker = helpers::raii_tracker;
 
-TEST_CASE("StaticVector destructor correctness") {
+TEST_CASE("fixed::vector destructor correctness") {
     tracker::reset();
     {
         fixed::vector<tracker, 5> vec;
@@ -99,7 +99,7 @@ TEST_CASE("StaticVector destructor correctness") {
     CHECK(tracker::destruct_count == 2);
 }
 
-TEST_CASE("StaticVector copy correctness") {
+TEST_CASE("fixed::vector copy correctness") {
     tracker::reset();
     {
         fixed::vector<tracker, 3> original;
@@ -127,7 +127,7 @@ TEST_CASE("StaticVector copy correctness") {
     CHECK(tracker::live_count == 0);
 }
 
-TEST_CASE("StaticVector move correctness") {
+TEST_CASE("fixed::vector move correctness") {
     tracker::reset();
     {
         fixed::vector<tracker, 3> original;
@@ -157,7 +157,7 @@ TEST_CASE("Vector self assignment") {
     CHECK(tracker::live_count == 1);
 }
 
-TEST_CASE("StaticVector ranges compatibility") {
+TEST_CASE("fixed::vector ranges compatibility") {
     STATIC_REQUIRE(std::forward_iterator<fixed::vector<gsl::not_null<i32*>, 4>::iterator>);
     STATIC_REQUIRE(std::forward_iterator<fixed::vector<gsl::not_null<i32*>, 4>::const_iterator>);
 

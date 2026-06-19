@@ -10,80 +10,80 @@
 
 namespace stdx::tests {
 
-using helpers::MockEnum;
-using helpers::MockNegativeEnum;
-using helpers::MockPositiveEnum;
-using helpers::NonMonotonicEnum;
+using helpers::mock_enum;
+using helpers::mock_negative_enum;
+using helpers::mock_positive_enum;
+using helpers::non_monotonic_enum;
 
 TEST_CASE("Standard enum map") {
-    fixed::enum_map<MockEnum, option<int>> map;
+    fixed::enum_map<mock_enum, option<int>> map;
     CHECK(map.size() == 4);
     for (const auto& item : map) { CHECK_FALSE(item); }
 
-    map[MockEnum::A] = 4;
+    map[mock_enum::A] = 4;
     for (const auto& item : map) {
         if (item) { CHECK(item == 4); }
     }
 
     SECTION("Automatic optional getting") {
-        const auto present_opt{map.get_opt(MockEnum::A)};
+        const auto present_opt{map.get_opt(mock_enum::A)};
         CHECK(present_opt);
         CHECK(present_opt == 4);
 
-        const auto missing_opt{map.get_opt(MockEnum::B)};
+        const auto missing_opt{map.get_opt(mock_enum::B)};
         CHECK_FALSE(missing_opt);
     }
 }
 
 TEST_CASE("Positive enum map") {
-    fixed::enum_map<MockPositiveEnum, usize*> map;
+    fixed::enum_map<mock_positive_enum, usize*> map;
     CHECK(map.size() == 4);
     for (const auto& item : map) { CHECK(item == nullptr); }
 
     usize v{1};
-    map[MockPositiveEnum::A] = &v;
+    map[mock_positive_enum::A] = &v;
     for (const auto& item : map) {
         if (item != nullptr) { CHECK(*item == 1); }
     }
 
     SECTION("Automatic optional getting") {
-        const auto present_opt{map.get_opt(MockPositiveEnum::A)};
+        const auto present_opt{map.get_opt(mock_positive_enum::A)};
         CHECK(**present_opt == 1);
 
-        const auto missing_opt{map.get_opt(MockPositiveEnum::B)};
+        const auto missing_opt{map.get_opt(mock_positive_enum::B)};
         CHECK_FALSE(missing_opt);
     }
 }
 
 TEST_CASE("Negative enum map") {
-    fixed::enum_map<MockNegativeEnum, bool> map{true};
+    fixed::enum_map<mock_negative_enum, bool> map{true};
     CHECK(map.size() == 4);
     for (const auto& item : map) { CHECK(item); }
 
-    map[MockNegativeEnum::A] = false;
-    CHECK_FALSE(map[MockNegativeEnum::A]);
-    CHECK(map[MockNegativeEnum::B]);
-    CHECK(map[MockNegativeEnum::C]);
-    CHECK(map[MockNegativeEnum::D]);
+    map[mock_negative_enum::A] = false;
+    CHECK_FALSE(map[mock_negative_enum::A]);
+    CHECK(map[mock_negative_enum::B]);
+    CHECK(map[mock_negative_enum::C]);
+    CHECK(map[mock_negative_enum::D]);
 }
 
 TEST_CASE("Non-monotonic enum map") {
-    fixed::enum_map<NonMonotonicEnum, usize> map{0xDEADBEEF};
+    fixed::enum_map<non_monotonic_enum, usize> map{0xDEADBEEF};
     CHECK(map.size() == 4);
 
-    map[NonMonotonicEnum::D] = 0xC0FFEE;
-    CHECK(map[NonMonotonicEnum::A] == 0xDEADBEEF);
-    CHECK(map[NonMonotonicEnum::B] == 0xDEADBEEF);
-    CHECK(map[NonMonotonicEnum::C] == 0xDEADBEEF);
-    CHECK(map[NonMonotonicEnum::D] == 0xC0FFEE);
+    map[non_monotonic_enum::D] = 0xC0FFEE;
+    CHECK(map[non_monotonic_enum::A] == 0xDEADBEEF);
+    CHECK(map[non_monotonic_enum::B] == 0xDEADBEEF);
+    CHECK(map[non_monotonic_enum::C] == 0xDEADBEEF);
+    CHECK(map[non_monotonic_enum::D] == 0xC0FFEE);
 }
 
-TEST_CASE("EnumMap ranges compatibility") {
-    using EnumMap = fixed::enum_map<NonMonotonicEnum, usize>;
-    STATIC_REQUIRE(std::forward_iterator<EnumMap::iterator>);
-    STATIC_REQUIRE(std::forward_iterator<EnumMap::const_iterator>);
+TEST_CASE("fixed::enum_map ranges compatibility") {
+    using enum_map = fixed::enum_map<non_monotonic_enum, usize>;
+    STATIC_REQUIRE(std::forward_iterator<enum_map::iterator>);
+    STATIC_REQUIRE(std::forward_iterator<enum_map::const_iterator>);
 
-    constexpr EnumMap map{0xDEADBEEF};
+    constexpr enum_map map{0xDEADBEEF};
     std::ranges::for_each(map, [](usize value) -> void { CHECK(value == 0xDEADBEEF); });
 }
 

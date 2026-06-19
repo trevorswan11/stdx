@@ -81,13 +81,14 @@ template <typename T> class ref {
     // Applies F to to underlying reference if present
     template <typename F> [[nodiscard]] constexpr auto transform(this auto&& self, F&& f) {
         using res_cv = std::invoke_result_t<F, T&>;
-        using res   = std::remove_cv_t<res_cv>;
+        using res    = std::remove_cv_t<res_cv>;
 
         // This is straight from clang's stdc++ C++23 optional implementation
         static_assert(!std::is_array_v<res>, "Result of f(value()) should not be an Array");
         static_assert(!std::is_same_v<res, std::in_place_t>,
                       "Result of f(value()) should not be std::in_place_t");
-        static_assert(!std::is_same_v<res, none_t>, "Result of f(value()) should not be stdx::none");
+        static_assert(!std::is_same_v<res, none_t>,
+                      "Result of f(value()) should not be stdx::none");
 
         // Also from clang, but generalized to support reference transform chains
         using ret = std::conditional_t<std::is_reference_v<res_cv>,
@@ -174,7 +175,8 @@ template <Compactable T> class compact_opt {
         static_assert(!std::is_array_v<res>, "Result of f(value()) should not be an Array");
         static_assert(!std::is_same_v<res, std::in_place_t>,
                       "Result of f(value()) should not be std::in_place_t");
-        static_assert(!std::is_same_v<res, none_t>, "Result of f(value()) should not be stdx::none");
+        static_assert(!std::is_same_v<res, none_t>,
+                      "Result of f(value()) should not be stdx::none");
         static_assert(std::is_object_v<res>, "Result of f(value()) should be an object type");
 
         // Also from clang, but generalized to support reference transform chains
@@ -292,7 +294,7 @@ class opt_size {
     constexpr opt_size(std::nullopt_t) noexcept {}
 
     // Any negative value is treated as a sentinel
-    template <Integral Int> constexpr opt_size(Int i) noexcept {
+    template <NumericIntegral Int> constexpr opt_size(Int i) noexcept {
         if (i >= 0) { value_ = static_cast<usize>(i); }
     }
 

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iterator>
+#include <string>
 #include <string_view>
 #include <utility>
 
@@ -12,8 +13,8 @@
 namespace stdx::tests {
 
 TEST_CASE("Metadata helpers") {
-    using fixed::detail::hm_metadata;
-    hm_metadata metadata;
+    using fixed::detail::hash_map_metadata;
+    hash_map_metadata metadata;
 
     metadata.open_up();
     CHECK(metadata.is_open());
@@ -26,10 +27,10 @@ TEST_CASE("Metadata helpers") {
     metadata.fill(255);
     REQUIRE(metadata.get_fingerprint() == 127);
 
-    REQUIRE(hm_metadata::take_fingerprint(300) == 0);
-    REQUIRE(hm_metadata::take_fingerprint(0xFFFFFFFFFFFFFFF) == 7);
-    REQUIRE(hm_metadata::take_fingerprint(0xAFFF5FFFFFFFFFFF) == 87);
-    REQUIRE(hm_metadata::take_fingerprint(0xFFFFFFFFFFFFFFFF) == 127);
+    REQUIRE(hash_map_metadata::take_fingerprint(300) == 0);
+    REQUIRE(hash_map_metadata::take_fingerprint(0xFFFFFFFFFFFFFFF) == 7);
+    REQUIRE(hash_map_metadata::take_fingerprint(0xAFFF5FFFFFFFFFFF) == 87);
+    REQUIRE(hash_map_metadata::take_fingerprint(0xFFFFFFFFFFFFFFFF) == 127);
 }
 
 TEST_CASE("hash_map construction") {
@@ -39,7 +40,7 @@ TEST_CASE("hash_map construction") {
     CHECK(hm.size() == 0);
 
     for (const auto& metadata : hm.get_metadata()) {
-        CHECK(metadata == fixed::detail::hm_metadata::make_open_slot());
+        CHECK(metadata == fixed::detail::hash_map_metadata::make_open_slot());
     }
 }
 
@@ -106,6 +107,35 @@ TEST_CASE("hash_map constexpr string view key") {
     CHECK(hm.contains("0"));
     CHECK(hm.get_opt("3"));
     CHECK(hm.get("3") == 4);
+}
+
+TEST_CASE("Rehash map") {
+    fixed::hash_map<usize, usize, 1'635UZ> hm;
+
+    // Add some elements and remove every third to simulate a fragmented map
+    for (usize i{0}; i < hm.capacity(); i++) {
+        hm.emplace(i, i);
+        if (i % 3 == 0) { hm.remove(i); }
+    }
+
+    // Rehash and ensure data was not lost along the way
+    hm.rehash();
+    REQUIRE(hm.size() == hm.capacity() * 2 / 3);
+    for (usize i = 0; i < hm.capacity(); i++) {
+        if (i % 3 == 0) {
+            CHECK_FALSE(hm.contains(i));
+        } else {
+            const auto& opt_value = hm.get_opt(i);
+            REQUIRE(opt_value);
+            CHECK(*opt_value == i);
+        }
+    }
+}
+
+TEST_CASE("hash_map transparent usage") {
+    fixed::hash_map<std::string, u32, 20> hm;
+    hm.emplace("hi", 2);
+    CHECK(hm.contains("hi"));
 }
 
 using tracker = helpers::raii_tracker;

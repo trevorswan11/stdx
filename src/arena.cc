@@ -44,7 +44,7 @@ auto arena::clear() noexcept -> void {
 
 auto arena::block::alloc(arena& a, usize size, usize align) -> void* {
     PROFILE_FUNCTION();
-    void* raw   = ::operator new(sizeof(block) + BLOCK_SIZE);
+    void* raw = ::operator new(sizeof(block) + BLOCK_SIZE);
     auto* blk = new (raw) block{};
 
     if (!a.head_) {

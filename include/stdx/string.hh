@@ -17,6 +17,8 @@ template <> struct is_string_like<std::string> : std::true_type {};
 template <> struct is_string_like<std::string_view> : std::true_type {};
 template <> struct is_string_like<const char*> : std::true_type {};
 template <> struct is_string_like<char*> : std::true_type {};
+template <usize N> struct is_string_like<const char[N]> : std::true_type {};
+template <usize N> struct is_string_like<char[N]> : std::true_type {};
 
 template <typename T>
 concept StringLike = is_string_like<std::remove_cvref_t<T>>::value;

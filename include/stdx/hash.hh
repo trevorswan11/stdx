@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <string>
 #include <string_view>
 #include <type_traits>
 
@@ -130,9 +131,13 @@ struct string_transparent_hash {
     [[nodiscard]] static auto operator()(std::string_view str) noexcept -> u64 {
         return ankerl::unordered_dense::hash<std::string_view>{}(str);
     }
+
+    [[nodiscard]] auto operator()(const std::string& str) const noexcept -> u64 {
+        return operator()(std::string_view{str});
+    }
 };
 
-template <typename S1> struct string_like_eq {
+template <typename S1> struct string_transparent_eq {
     using is_transparent = void;
 
     template <typename S2>

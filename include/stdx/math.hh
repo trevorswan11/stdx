@@ -1,14 +1,15 @@
 #pragma once
 
+#include <concepts>
 #include <type_traits>
 
-#include "stdx/type_traits.hh"
 #include "stdx/types.hh"
 
 namespace stdx {
 
 // Returns the rounded-up power of two given the unsigned value
-template <Unsigned U> [[nodiscard]] constexpr auto ceil_power_of_two(U val) noexcept -> U {
+template <std::unsigned_integral U>
+[[nodiscard]] constexpr auto ceil_power_of_two(U val) noexcept -> U {
     // If it's already a power of two there's no need to round
     if (val == 0) { return 1; }
     if ((val & (val - 1)) == 0) { return val; }
@@ -25,7 +26,8 @@ template <Unsigned U> [[nodiscard]] constexpr auto ceil_power_of_two(U val) noex
     return ++val;
 }
 
-template <Unsigned U> [[nodiscard]] constexpr auto is_power_of_two(U val) noexcept -> bool {
+template <std::unsigned_integral U>
+[[nodiscard]] constexpr auto is_power_of_two(U val) noexcept -> bool {
     return (val > 0) && ((val & (val - 1)) == 0);
 }
 
