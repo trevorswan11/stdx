@@ -15,18 +15,16 @@
 
 namespace stdx {
 
-namespace traits {
-
 template <typename T> struct Nullable;
 
 // When true, allows the type to be used in a compact optional representation
 template <typename T>
-concept Compactable = !traits::Reference<T> && requires(const T& t) {
+concept Compactable = !Reference<T> && requires(const T& t) {
     { Nullable<T>::invalid() } -> std::same_as<T>;
     { Nullable<T>::is_valid(t) } -> std::same_as<bool>;
 };
 
-template <traits::ScopedEnum E> struct Nullable<E> {
+template <ScopedEnum E> struct Nullable<E> {
     [[nodiscard]] static constexpr auto invalid() noexcept -> E {
         return static_cast<E>(std::numeric_limits<std::underlying_type_t<E>>::max());
     }
@@ -36,25 +34,23 @@ template <traits::ScopedEnum E> struct Nullable<E> {
     }
 };
 
-} // namespace traits
-
-using None = std::nullopt_t;
-constexpr None none{std::nullopt}; // NOLINT
+using none_t = std::nullopt_t;
+constexpr none_t none{std::nullopt}; // NOLINT
 
 namespace detail {
 
-template <typename T> class Ref {
+template <typename T> class ref {
   public:
     // cppcheck-suppress-begin noExplicitConstructor
-    constexpr Ref() noexcept : ptr_{nullptr} {}
-    constexpr Ref(None) noexcept : ptr_{nullptr} {}
-    constexpr Ref(T& ref) noexcept : ptr_{&ref} {}
-    constexpr Ref(T* ref) noexcept : ptr_{ref} {}
-    Ref(T&&) = delete;
+    constexpr ref() noexcept : ptr_{nullptr} {}
+    constexpr ref(none_t) noexcept : ptr_{nullptr} {}
+    constexpr ref(T& ref) noexcept : ptr_{&ref} {}
+    constexpr ref(T* ref) noexcept : ptr_{ref} {}
+    ref(T&&) = delete;
 
     template <typename U>
         requires std::convertible_to<U*, T*>
-    constexpr Ref(const Ref<U>& other) noexcept
+    constexpr ref(const ref<U>& other) noexcept
         : ptr_{other.has_value() ? other.operator->() : nullptr} {}
     // cppcheck-suppress-end noExplicitConstructor
 
@@ -84,21 +80,21 @@ template <typename T> class Ref {
 
     // Applies F to to underlying reference if present
     template <typename F> [[nodiscard]] constexpr auto transform(this auto&& self, F&& f) {
-        using ResCV = std::invoke_result_t<F, T&>;
-        using Res   = std::remove_cv_t<ResCV>;
+        using res_cv = std::invoke_result_t<F, T&>;
+        using res   = std::remove_cv_t<res_cv>;
 
         // This is straight from clang's stdc++ C++23 optional implementation
-        static_assert(!std::is_array_v<Res>, "Result of f(value()) should not be an Array");
-        static_assert(!std::is_same_v<Res, std::in_place_t>,
+        static_assert(!std::is_array_v<res>, "Result of f(value()) should not be an Array");
+        static_assert(!std::is_same_v<res, std::in_place_t>,
                       "Result of f(value()) should not be std::in_place_t");
-        static_assert(!std::is_same_v<Res, None>, "Result of f(value()) should not be stdx::none");
+        static_assert(!std::is_same_v<res, none_t>, "Result of f(value()) should not be stdx::none");
 
         // Also from clang, but generalized to support reference transform chains
-        using Ret = std::conditional_t<std::is_reference_v<ResCV>,
-                                       Ref<std::remove_reference_t<ResCV>>,
-                                       std::optional<ResCV>>;
-        if (self.has_value()) { return Ret{std::forward<F>(f)(self.value())}; }
-        return Ret{};
+        using ret = std::conditional_t<std::is_reference_v<res_cv>,
+                                       ref<std::remove_reference_t<res_cv>>,
+                                       std::optional<res_cv>>;
+        if (self.has_value()) { return ret{std::forward<F>(f)(self.value())}; }
+        return ret{};
     }
 
     template <typename Or>
@@ -109,13 +105,13 @@ template <typename T> class Ref {
 
     // Creates a copy of the underlying data and forwards it to the standard optional
     [[nodiscard]] constexpr auto materialize() const noexcept
-        requires traits::CopyConstructible<T>
+        requires CopyConstructible<T>
     {
         return has_value() ? std::optional<std::remove_const_t<T>>{*ptr_} : none;
     }
 
     // Pointer comparison (just checks memory addresses)
-    [[nodiscard]] constexpr auto operator==(const Ref&) const noexcept -> bool = default;
+    [[nodiscard]] constexpr auto operator==(const ref&) const noexcept -> bool = default;
 
   private:
     T* ptr_;
@@ -124,20 +120,20 @@ template <typename T> class Ref {
 // Returns the Ref version of the optional type if required
 template <typename T>
 using dispatch_opt =
-    std::conditional_t<traits::Reference<T>, Ref<std::remove_reference_t<T>>, std::optional<T>>;
+    std::conditional_t<Reference<T>, ref<std::remove_reference_t<T>>, std::optional<T>>;
 
 // An efficient optional enum representation for enums with a sentinel value
-template <traits::Compactable T> class CompactOpt {
+template <Compactable T> class compact_opt {
   public:
     // cppcheck-suppress-begin noExplicitConstructor
-    constexpr CompactOpt() noexcept : value_{NO_VALUE} {}
-    constexpr CompactOpt(const T& value) noexcept : value_{value} {}
-    constexpr CompactOpt(None) noexcept : value_{NO_VALUE} {}
-    constexpr CompactOpt(const std::optional<T>& opt) noexcept : value_{opt.value_or(NO_VALUE)} {}
+    constexpr compact_opt() noexcept : value_{NO_VALUE} {}
+    constexpr compact_opt(const T& value) noexcept : value_{value} {}
+    constexpr compact_opt(none_t) noexcept : value_{NO_VALUE} {}
+    constexpr compact_opt(const std::optional<T>& opt) noexcept : value_{opt.value_or(NO_VALUE)} {}
     // cppcheck-suppress-end noExplicitConstructor
 
     [[nodiscard]] constexpr auto has_value() const noexcept -> bool {
-        return traits::Nullable<T>::is_valid(value_);
+        return Nullable<T>::is_valid(value_);
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return has_value(); }
@@ -167,26 +163,26 @@ template <traits::Compactable T> class CompactOpt {
     [[nodiscard]] constexpr auto operator*(this auto&& self) noexcept -> auto& {
         return *self.get();
     }
-    [[nodiscard]] friend auto operator==(const CompactOpt& lhs, const CompactOpt& rhs) noexcept
+    [[nodiscard]] friend auto operator==(const compact_opt& lhs, const compact_opt& rhs) noexcept
         -> bool = default;
 
     template <typename F>
     [[nodiscard]] constexpr auto transform(this auto&& self, F&& f) -> decltype(auto) {
-        using Res = std::remove_cv_t<std::invoke_result_t<F, T>>;
+        using res = std::remove_cv_t<std::invoke_result_t<F, T>>;
 
         // This is straight from clang's stdc++ C++23 optional implementation
-        static_assert(!std::is_array_v<Res>, "Result of f(value()) should not be an Array");
-        static_assert(!std::is_same_v<Res, std::in_place_t>,
+        static_assert(!std::is_array_v<res>, "Result of f(value()) should not be an Array");
+        static_assert(!std::is_same_v<res, std::in_place_t>,
                       "Result of f(value()) should not be std::in_place_t");
-        static_assert(!std::is_same_v<Res, None>, "Result of f(value()) should not be stdx::none");
-        static_assert(std::is_object_v<Res>, "Result of f(value()) should be an object type");
+        static_assert(!std::is_same_v<res, none_t>, "Result of f(value()) should not be stdx::none");
+        static_assert(std::is_object_v<res>, "Result of f(value()) should be an object type");
 
         // Also from clang, but generalized to support reference transform chains
-        using Ret = dispatch_opt<Res>;
-        return self.has_value() ? Ret{std::forward<F>(f)(self.value())} : Ret{};
+        using ret = dispatch_opt<res>;
+        return self.has_value() ? ret{std::forward<F>(f)(self.value())} : ret{};
     }
 
-    template <traits::CopyConstructible Or>
+    template <CopyConstructible Or>
         requires requires(const T& t) { static_cast<Or>(t); }
     [[nodiscard]] constexpr auto value_or(this auto&& self, Or&& or_value) -> decltype(auto) {
         return self.has_value() ? *self.get() : static_cast<T>(std::forward<Or>(or_value));
@@ -197,32 +193,32 @@ template <traits::Compactable T> class CompactOpt {
     }
 
   private:
-    static constexpr auto NO_VALUE{traits::Nullable<T>::invalid()};
+    static constexpr auto NO_VALUE{Nullable<T>::invalid()};
 
   private:
     T value_;
 };
 
-template <typename T> struct OptionImpl {
+template <typename T> struct option_impl {
     using type = std::optional<T>;
 };
 
-template <traits::Reference T> struct OptionImpl<T> {
-    using type = Ref<std::remove_reference_t<T>>;
+template <Reference T> struct option_impl<T> {
+    using type = ref<std::remove_reference_t<T>>;
 };
 
-template <traits::Compactable T> struct OptionImpl<T> {
-    using type = CompactOpt<T>;
+template <Compactable T> struct option_impl<T> {
+    using type = compact_opt<T>;
 };
 
 } // namespace detail
 
 // A safe, reference-allowable optional type dispatcher
-template <typename T> using Option = typename detail::OptionImpl<T>::type;
+template <typename T> using option = typename detail::option_impl<T>::type;
 
 // Compares two values, forwarding safety concerns to the comparator.
 template <typename T, typename Comparator>
-constexpr auto safe_eq(const Option<T>& a, const Option<T>& b, Comparator cmp) noexcept -> bool {
+constexpr auto safe_eq(const option<T>& a, const option<T>& b, Comparator cmp) noexcept -> bool {
     if (a.has_value() != b.has_value()) { return false; }
     if (!a.has_value()) { return true; }
     return cmp(*a, *b);
@@ -230,20 +226,20 @@ constexpr auto safe_eq(const Option<T>& a, const Option<T>& b, Comparator cmp) n
 
 // Compares two values, delegating equality to the default equality operator.
 template <typename T>
-constexpr auto safe_eq(const Option<T>& a, const Option<T>& b) noexcept -> bool {
+constexpr auto safe_eq(const option<T>& a, const option<T>& b) noexcept -> bool {
     if (a.has_value() != b.has_value()) { return false; }
     if (!a.has_value()) { return true; }
     return *a == *b;
 }
 
 // An efficient optional representation of boolean values
-class Tribool {
+class tribool {
   public:
     // cppcheck-suppress-begin noExplicitConstructor
-    constexpr Tribool() noexcept : value_{NO_VALUE} {}
-    constexpr Tribool(bool value) noexcept : value_{static_cast<u8>(value)} {}
-    constexpr Tribool(None) noexcept : value_{NO_VALUE} {}
-    constexpr Tribool(const std::optional<bool>& ob) noexcept
+    constexpr tribool() noexcept : value_{NO_VALUE} {}
+    constexpr tribool(bool value) noexcept : value_{static_cast<u8>(value)} {}
+    constexpr tribool(none_t) noexcept : value_{NO_VALUE} {}
+    constexpr tribool(const std::optional<bool>& ob) noexcept
         : value_{ob.transform([](bool b) -> u8 { return b; }).value_or(NO_VALUE)} {}
     // cppcheck-suppress-end noExplicitConstructor
 
@@ -270,7 +266,7 @@ class Tribool {
     [[nodiscard]] constexpr auto operator*() const noexcept -> bool { return get(); }
 
     template <std::convertible_to<bool> Or>
-        requires traits::CopyConstructible<Or>
+        requires CopyConstructible<Or>
     [[nodiscard]] constexpr auto value_or(Or&& or_value) -> bool {
         return has_value() ? get() : static_cast<bool>(std::forward<Or>(or_value));
     }
@@ -287,20 +283,20 @@ class Tribool {
 };
 
 // A minimal, zero-cost optional usize wrapper
-class OptSize {
+class opt_size {
   public:
-    constexpr OptSize() noexcept = default;
+    constexpr opt_size() noexcept = default;
 
     // cppcheck-suppress-begin noExplicitConstructor
-    constexpr OptSize(usize idx) noexcept : value_{idx} {}
-    constexpr OptSize(std::nullopt_t) noexcept {}
+    constexpr opt_size(usize idx) noexcept : value_{idx} {}
+    constexpr opt_size(std::nullopt_t) noexcept {}
 
     // Any negative value is treated as a sentinel
-    template <traits::Integral Int> constexpr OptSize(Int i) noexcept {
+    template <Integral Int> constexpr opt_size(Int i) noexcept {
         if (i >= 0) { value_ = static_cast<usize>(i); }
     }
 
-    constexpr OptSize(const std::optional<usize>& oi) noexcept : value_{oi.value_or(NO_VALUE)} {}
+    constexpr opt_size(const std::optional<usize>& oi) noexcept : value_{oi.value_or(NO_VALUE)} {}
     // cppcheck-suppress-end noExplicitConstructor
 
     [[nodiscard]] constexpr auto has_value() const noexcept -> bool { return value_ != NO_VALUE; }
@@ -327,7 +323,7 @@ class OptSize {
         return has_value() ? std::optional<usize>{value_} : none;
     }
 
-    [[nodiscard]] constexpr auto operator==(const OptSize&) const noexcept -> bool = default;
+    [[nodiscard]] constexpr auto operator==(const opt_size&) const noexcept -> bool = default;
 
     [[nodiscard]] auto hash() const noexcept -> u64 { return std::hash<usize>{}(value_); }
 
@@ -338,27 +334,23 @@ class OptSize {
     usize value_{NO_VALUE};
 };
 
-namespace traits {
-
 template <typename T> struct is_option : std::false_type {};
 template <typename T> struct is_option<std::optional<T>> : std::true_type {};
-template <typename T> struct is_option<detail::Ref<T>> : std::true_type {};
-template <typename T> struct is_option<detail::CompactOpt<T>> : std::true_type {};
+template <typename T> struct is_option<detail::ref<T>> : std::true_type {};
+template <typename T> struct is_option<detail::compact_opt<T>> : std::true_type {};
 
 template <typename T>
 concept Option = is_option<T>::value;
 
 template <typename T> struct is_opt_size : std::false_type {};
-template <> struct is_opt_size<OptSize> : std::true_type {};
+template <> struct is_opt_size<opt_size> : std::true_type {};
 
 template <typename T>
 concept OptSize = is_opt_size<T>::value;
 
-} // namespace traits
-
 } // namespace stdx
 
-template <> struct ankerl::unordered_dense::hash<stdx::OptSize> {
+template <> struct ankerl::unordered_dense::hash<stdx::opt_size> {
     using is_avalanching = void;
-    [[nodiscard]] auto operator()(const stdx::OptSize& o) const noexcept { return o.hash(); }
+    [[nodiscard]] auto operator()(const stdx::opt_size& o) const noexcept { return o.hash(); }
 };

@@ -4,19 +4,19 @@
 
 namespace stdx::tests::helpers {
 
-struct Foo {
+struct foo {
     i32  value;
-    auto operator==(const Foo&) const -> bool = default;
+    auto operator==(const foo&) const -> bool = default;
 };
 
-struct Bar {
+struct bar {
     std::string value;
-    auto        operator==(const Bar&) const -> bool = default;
+    auto        operator==(const bar&) const -> bool = default;
 };
 
-struct Baz {
+struct baz {
     f64  value;
-    auto operator==(const Baz&) const -> bool = default;
+    auto operator==(const baz&) const -> bool = default;
 };
 
 } // namespace stdx::tests::helpers

@@ -23,11 +23,11 @@ TEST_CASE("Ceil power of two bounds") {
 }
 
 TEST_CASE("Minimum unsigned int") {
-    STATIC_REQUIRE(std::is_same_v<traits::min_uint_for_bits<7>, u8>);
-    STATIC_REQUIRE(std::is_same_v<traits::min_uint_for_bits<8>, u8>);
-    STATIC_REQUIRE(std::is_same_v<traits::min_uint_for_bits<9>, u16>);
-    STATIC_REQUIRE(std::is_same_v<traits::min_uint_for_bits<17>, u32>);
-    STATIC_REQUIRE(std::is_same_v<traits::min_uint_for_bits<33>, u64>);
+    STATIC_REQUIRE(std::is_same_v<min_uint_for_bits<7>, u8>);
+    STATIC_REQUIRE(std::is_same_v<min_uint_for_bits<8>, u8>);
+    STATIC_REQUIRE(std::is_same_v<min_uint_for_bits<9>, u16>);
+    STATIC_REQUIRE(std::is_same_v<min_uint_for_bits<17>, u32>);
+    STATIC_REQUIRE(std::is_same_v<min_uint_for_bits<33>, u64>);
 }
 
 } // namespace stdx::tests

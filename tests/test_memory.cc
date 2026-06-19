@@ -7,9 +7,9 @@
 
 namespace stdx::tests {
 
-using OkBox     = Box<bool>;
-using NotBox    = bool;
-using CustomBox = Box<bool, void (*)(bool*)>;
+using ok_box     = box<bool>;
+using not_box    = bool;
+using custom_box = box<bool, void (*)(bool*)>;
 
 TEST_CASE("Basic box construction") {
     auto b{make_box<int>(42)};
@@ -17,8 +17,8 @@ TEST_CASE("Basic box construction") {
 }
 
 TEST_CASE("Box upcasting") {
-    auto               d{make_box<helpers::Derived>()};
-    Box<helpers::Base> b{std::move(d)};
+    auto               d{make_box<helpers::derived>()};
+    box<helpers::base> b{std::move(d)};
     CHECK(b->x == 10);
 }
 

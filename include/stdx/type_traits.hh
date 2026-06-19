@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <type_traits>
 
-namespace stdx::traits {
+namespace stdx {
 
 template <typename T>
 concept Integral = std::is_integral_v<T> && !std::same_as<T, bool>;
@@ -64,4 +64,4 @@ concept Const = std::is_const_v<std::remove_reference_t<T>>;
 template <typename Self, typename T>
 using const_dispatch_t = std::conditional_t<Const<Self>, const T, T>;
 
-} // namespace stdx::traits
+} // namespace stdx

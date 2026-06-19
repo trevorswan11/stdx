@@ -12,7 +12,7 @@ namespace {
 
 constexpr usize MARKER{42};
 
-struct Large {
+struct large {
     usize                          marker{MARKER};
     std::array<i32, 4UZ * 1'024UZ> _;
 };
@@ -20,34 +20,34 @@ struct Large {
 } // namespace
 
 TEST_CASE("Arena pointer stability") {
-    Arena               arena;
-    std::vector<Large*> foos;
+    arena               a;
+    std::vector<large*> foos;
 
     // First use
     {
-        for (usize i{0}; i < 100; ++i) { foos.emplace_back(arena.make<Large>().get()); }
+        for (usize i{0}; i < 100; ++i) { foos.emplace_back(a.make<large>().get()); }
         for (const auto& foo : foos) { CHECK(foo->marker == MARKER); }
     }
 
     // Reset and reuse
     {
-        arena.reset();
+        a.reset();
         foos.clear();
-        for (usize i{0}; i < 100; ++i) { foos.emplace_back(arena.make<Large>().get()); }
+        for (usize i{0}; i < 100; ++i) { foos.emplace_back(a.make<large>().get()); }
         for (const auto& foo : foos) { CHECK(foo->marker == MARKER); }
     }
 }
 
 TEST_CASE("Arena alignment") {
-    Arena arena;
-    CHECK(*arena.make<bool>(true));
-    const auto p{arena.make<void*>(nullptr)};
+    arena a;
+    CHECK(*a.make<bool>(true));
+    const auto p{a.make<void*>(nullptr)};
     CHECK(reinterpret_cast<uptr>(p.get()) % alignof(void*) == 0);
 }
 
 TEST_CASE("Arena array construction") {
-    Arena      arena;
-    const auto array{arena.make_span<i32>(10)};
+    arena      a;
+    const auto array{a.make_span<i32>(10)};
     for (const auto& i : array) { CHECK(i == 0); }
 }
 

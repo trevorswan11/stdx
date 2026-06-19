@@ -6,14 +6,14 @@
 namespace stdx::json {
 
 // A lazily sanitized string operating at format time
-struct SanitizedString {
+struct sanitized_string {
     std::string_view raw;
 };
 
 } // namespace stdx::json
 
-template <> struct fmt::formatter<stdx::json::SanitizedString> : fmt::formatter<string_view> {
-    static auto format(stdx::json::SanitizedString s, format_context& ctx) {
+template <> struct fmt::formatter<stdx::json::sanitized_string> : fmt::formatter<string_view> {
+    static auto format(stdx::json::sanitized_string s, format_context& ctx) {
         auto out{ctx.out()};
         for (auto c : s.raw) {
             switch (c) {

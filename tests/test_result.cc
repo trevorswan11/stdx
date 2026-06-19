@@ -10,15 +10,15 @@
 namespace stdx::tests {
 
 TEST_CASE("Result traits") {
-    STATIC_CHECK(traits::is_result<Result<i32, i64>>::value);
-    STATIC_CHECK(traits::is_result<Result<i32&, std::string>>::value);
-    STATIC_CHECK(traits::Result<Result<i32, i64>>);
-    STATIC_CHECK_FALSE(traits::Result<i32>);
+    STATIC_CHECK(is_result<result<i32, i64>>::value);
+    STATIC_CHECK(is_result<result<i32&, std::string>>::value);
+    STATIC_CHECK(Result<result<i32, i64>>);
+    STATIC_CHECK_FALSE(Result<i32>);
 }
 
 TEST_CASE("Try macro usage") {
-    Result<i32, std::string_view> res;
-    const auto                    unwrap = [&] -> Option<Err<std::string_view>> {
+    result<i32, std::string_view> res;
+    const auto                    unwrap = [&] -> option<err<std::string_view>> {
         const auto val{TRY(res)};
         CHECK(val == 2);
         return none;

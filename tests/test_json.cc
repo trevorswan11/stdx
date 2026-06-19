@@ -7,23 +7,23 @@
 namespace stdx::tests {
 
 TEST_CASE("Standard alphanum string") {
-    CHECK(fmt::format("{}", json::SanitizedString{""}).empty());
-    auto result{fmt::format("{}", json::SanitizedString{"my_function_123"})};
+    CHECK(fmt::format("{}", json::sanitized_string{""}).empty());
+    auto result{fmt::format("{}", json::sanitized_string{"my_function_123"})};
     CHECK(result == "my_function_123");
 }
 
 TEST_CASE("Quotes and backslashes") {
-    auto result{fmt::format("{}", json::SanitizedString{R"(path\to\"file")"})};
+    auto result{fmt::format("{}", json::sanitized_string{R"(path\to\"file")"})};
     CHECK(result == R"(path\\to\\\"file\")");
 }
 
 TEST_CASE("Standard whitespace control characters") {
-    auto result = fmt::format("{}", json::SanitizedString{"Line1\nLine2\tTabbed"});
+    auto result = fmt::format("{}", json::sanitized_string{"Line1\nLine2\tTabbed"});
     CHECK(result == R"(Line1\nLine2\tTabbed)");
 }
 
 TEST_CASE("Non-printable control characters") {
-    auto result{fmt::format("{}", json::SanitizedString{"s\u0002e"})};
+    auto result{fmt::format("{}", json::sanitized_string{"s\u0002e"})};
     CHECK(result == R"(s\u0002e)");
 }
 

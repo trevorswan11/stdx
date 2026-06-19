@@ -20,14 +20,14 @@ concept MappableEnum = BoundedEnum<Enum> && magic_enum::enum_count<Enum>() > 1;
 // An O(1) map that stores optional values for each enumeration
 //
 // Must always be initialized in such a way that every slot is initialized
-template <MappableEnum E, typename Value> class EnumMap {
+template <MappableEnum E, typename Value> class enum_map {
   public:
-    using Map = std::array<Value, magic_enum::enum_count<E>()>;
-    MAKE_UNALIASED_ITERATOR(Map, map_)
+    using map = std::array<Value, magic_enum::enum_count<E>()>;
+    MAKE_UNALIASED_ITERATOR(map, map_)
 
   public:
     // Creates a new value with the provided args at every slot
-    template <typename... Args> constexpr explicit EnumMap(Args&&... args) noexcept {
+    template <typename... Args> constexpr explicit enum_map(Args&&... args) noexcept {
         map_.fill(Value{std::forward<Args>(args)...});
     }
 
@@ -42,20 +42,20 @@ template <MappableEnum E, typename Value> class EnumMap {
     //
     // Contextually convertible Values are pointers and optional types
     [[nodiscard]] constexpr auto get_opt(E key) const noexcept {
-        if constexpr (traits::Option<Value>) {
+        if constexpr (Option<Value>) {
             return operator[](key);
-        } else if constexpr (traits::Pointer<Value>) {
+        } else if constexpr (Pointer<Value>) {
             const auto value{operator[](key)};
-            return value ? Option<Value>{value} : none;
+            return value ? option<Value>{value} : none;
         } else {
-            return Option<Value>{operator[](key)};
+            return option<Value>{operator[](key)};
         }
     }
 
     // Fills the map with the provided value with the provided pairs
-    template <traits::InsertablePair... Pairs>
+    template <InsertablePair... Pairs>
     [[nodiscard]] static constexpr auto from(Value&& default_value, Pairs&&... kv_pairs) noexcept {
-        EnumMap<E, Value> map{std::forward<Value>(default_value)};
+        enum_map<E, Value> map{std::forward<Value>(default_value)};
         using std::get;
         (...,
          (map[get<0>(std::forward<decltype(kv_pairs)>(kv_pairs))] =
@@ -64,7 +64,7 @@ template <MappableEnum E, typename Value> class EnumMap {
     }
 
   private:
-    Map map_{};
+    map map_{};
 };
 
 } // namespace stdx::fixed

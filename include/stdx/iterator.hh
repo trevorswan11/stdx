@@ -9,12 +9,10 @@
 namespace stdx {
 
 // Similar to a std::pair, but the Visitor may be a function pointer
-template <typename Iterable, typename Visitor> struct IterPair {
+template <typename Iterable, typename Visitor> struct iter_pair {
     const Iterable& iterable;
     Visitor         visitor;
 };
-
-namespace traits {
 
 template <typename Self, typename T> using data_pointer_t = const_dispatch_t<Self, T>*;
 
@@ -27,8 +25,6 @@ concept InsertablePair = requires {
 
 template <usize I, typename... Ts>
 using common_tuple_type_t = std::common_type_t<std::tuple_element_t<I, std::remove_cvref_t<Ts>>...>;
-
-} // namespace traits
 
 // Gives the enclosing type an iterator interface based on an iterator-capable type
 #define MAKE_UNALIASED_ITERATOR(Container, member)                                                \

@@ -13,27 +13,27 @@
 namespace stdx {
 
 // Do not free returned memory directly!
-class Arena {
+class arena {
   public:
     static constexpr usize BLOCK_SIZE{64UZ * 1'024UZ};
 
   public:
-    Arena() noexcept = default;
-    ~Arena() { clear(); }
+    arena() noexcept = default;
+    ~arena() { clear(); }
 
-    Arena(const Arena&)                    = delete;
-    auto operator=(const Arena&) -> Arena& = delete;
-    Arena(Arena&& other) noexcept
+    arena(const arena&)                    = delete;
+    auto operator=(const arena&) -> arena& = delete;
+    arena(arena&& other) noexcept
         : offset_{other.offset_}, head_{other.head_}, current_{other.current_} {
         other.head_ = nullptr;
         other.reset();
     }
-    auto operator=(Arena&&) -> Arena& = delete;
+    auto operator=(arena&&) -> arena& = delete;
 
     // cppcheck-suppress-begin [unreadVariable, internalAstError]
 
     // Asserts that the requested type is at most 64KB
-    template <traits::TriviallyDestructible T, typename... Args>
+    template <TriviallyDestructible T, typename... Args>
         requires(sizeof(T) <= BLOCK_SIZE)
     [[nodiscard]] auto make(Args&&... args) -> gsl::not_null<T*> {
         void* mem = alloc(sizeof(T), alignof(T));
@@ -41,7 +41,7 @@ class Arena {
     }
 
     // Asserts that the requested type-count product can fit in 64KB
-    template <traits::TriviallyDestructible T>
+    template <TriviallyDestructible T>
         requires(sizeof(T) <= BLOCK_SIZE)
     [[nodiscard]] auto make_span(usize count) -> gsl::span<T> {
         const auto size{sizeof(T) * count};
@@ -64,17 +64,17 @@ class Arena {
     [[nodiscard]] auto alloc(usize size, usize align) -> void*;
 
   private:
-    struct Block {
-        Block* next{nullptr};
+    struct block {
+        block* next{nullptr};
 
         // Allocates a new block housed inside of its own memory region based on `BLOCK_SIZE`
-        [[nodiscard]] static auto alloc(Arena& a, usize size, usize align) -> void*;
+        [[nodiscard]] static auto alloc(arena& a, usize size, usize align) -> void*;
     };
 
   private:
     usize  offset_{0};
-    Block* head_{nullptr};
-    Block* current_{nullptr};
+    block* head_{nullptr};
+    block* current_{nullptr};
 };
 
 } // namespace stdx

@@ -16,7 +16,7 @@ using helpers::MockPositiveEnum;
 using helpers::NonMonotonicEnum;
 
 TEST_CASE("Standard enum map") {
-    fixed::EnumMap<MockEnum, Option<int>> map;
+    fixed::enum_map<MockEnum, option<int>> map;
     CHECK(map.size() == 4);
     for (const auto& item : map) { CHECK_FALSE(item); }
 
@@ -36,7 +36,7 @@ TEST_CASE("Standard enum map") {
 }
 
 TEST_CASE("Positive enum map") {
-    fixed::EnumMap<MockPositiveEnum, usize*> map;
+    fixed::enum_map<MockPositiveEnum, usize*> map;
     CHECK(map.size() == 4);
     for (const auto& item : map) { CHECK(item == nullptr); }
 
@@ -56,7 +56,7 @@ TEST_CASE("Positive enum map") {
 }
 
 TEST_CASE("Negative enum map") {
-    fixed::EnumMap<MockNegativeEnum, bool> map{true};
+    fixed::enum_map<MockNegativeEnum, bool> map{true};
     CHECK(map.size() == 4);
     for (const auto& item : map) { CHECK(item); }
 
@@ -68,7 +68,7 @@ TEST_CASE("Negative enum map") {
 }
 
 TEST_CASE("Non-monotonic enum map") {
-    fixed::EnumMap<NonMonotonicEnum, usize> map{0xDEADBEEF};
+    fixed::enum_map<NonMonotonicEnum, usize> map{0xDEADBEEF};
     CHECK(map.size() == 4);
 
     map[NonMonotonicEnum::D] = 0xC0FFEE;
@@ -79,7 +79,7 @@ TEST_CASE("Non-monotonic enum map") {
 }
 
 TEST_CASE("EnumMap ranges compatibility") {
-    using EnumMap = fixed::EnumMap<NonMonotonicEnum, usize>;
+    using EnumMap = fixed::enum_map<NonMonotonicEnum, usize>;
     STATIC_REQUIRE(std::forward_iterator<EnumMap::iterator>);
     STATIC_REQUIRE(std::forward_iterator<EnumMap::const_iterator>);
 

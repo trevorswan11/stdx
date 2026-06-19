@@ -14,27 +14,27 @@
 namespace stdx::tests {
 
 TEST_CASE("Ref construction checks") {
-    STATIC_CHECK_FALSE(traits::Constructible<detail::Ref<i32>, i32&&>);
-    STATIC_CHECK(traits::TriviallyCopyable<detail::Ref<i32>>);
+    STATIC_CHECK_FALSE(Constructible<detail::ref<i32>, i32&&>);
+    STATIC_CHECK(TriviallyCopyable<detail::ref<i32>>);
 }
 
 TEST_CASE("Option template specialization") {
-    STATIC_CHECK(std::is_same_v<Option<i32&>, detail::Ref<i32>>);
-    STATIC_CHECK(std::is_same_v<Option<const i32&>, detail::Ref<const i32>>);
-    STATIC_CHECK(std::is_same_v<Option<i32>, std::optional<i32>>);
+    STATIC_CHECK(std::is_same_v<option<i32&>, detail::ref<i32>>);
+    STATIC_CHECK(std::is_same_v<option<const i32&>, detail::ref<const i32>>);
+    STATIC_CHECK(std::is_same_v<option<i32>, std::optional<i32>>);
 }
 
 TEST_CASE("Option traits") {
-    STATIC_CHECK(traits::is_option<Option<i32>>::value);
-    STATIC_CHECK(traits::is_option<Option<i32&>>::value);
-    STATIC_CHECK(traits::Option<Option<i32>>);
-    STATIC_CHECK(traits::Option<Option<i32&>>);
-    STATIC_CHECK_FALSE(traits::Option<i32>);
+    STATIC_CHECK(is_option<option<i32>>::value);
+    STATIC_CHECK(is_option<option<i32&>>::value);
+    STATIC_CHECK(Option<option<i32>>);
+    STATIC_CHECK(Option<option<i32&>>);
+    STATIC_CHECK_FALSE(Option<i32>);
 }
 
 TEST_CASE("Ref basic construction") {
     i32                    val{42};
-    const detail::Ref<i32> opt{val};
+    const detail::ref<i32> opt{val};
 
     CHECK(opt.has_value());
     CHECK(static_cast<bool>(opt));
@@ -45,32 +45,32 @@ TEST_CASE("Ref basic construction") {
 }
 
 TEST_CASE("Ref null use & access") {
-    const detail::Ref<i32> opt1{};
+    const detail::ref<i32> opt1{};
     CHECK_FALSE(opt1.has_value());
-    const detail::Ref<i32> opt2{none};
+    const detail::ref<i32> opt2{none};
     CHECK_FALSE(opt2.has_value());
 }
 
 TEST_CASE("Ref conversions") {
     SECTION("Non-const -> const") {
         i32                          val{42};
-        const detail::Ref<i32>       mut_opt{val};
-        const detail::Ref<const i32> const_opt{mut_opt};
+        const detail::ref<i32>       mut_opt{val};
+        const detail::ref<const i32> const_opt{mut_opt};
         CHECK(const_opt.has_value());
         CHECK(*const_opt == 42);
     }
 
     SECTION("Derived -> Base") {
-        helpers::Derived                    d;
-        const detail::Ref<helpers::Derived> d_opt{d};
-        const detail::Ref<helpers::Base>    base_opt = d_opt;
+        helpers::derived                    d;
+        const detail::ref<helpers::derived> d_opt{d};
+        const detail::ref<helpers::base>    base_opt = d_opt;
         CHECK(base_opt.has_value());
         CHECK(base_opt->x == 10);
     }
 
     SECTION("To standard optional") {
         i32                    val{42};
-        const detail::Ref<i32> ref_opt{val};
+        const detail::ref<i32> ref_opt{val};
         const auto             std_opt{ref_opt.materialize()};
         CHECK(std_opt == 42);
     }
@@ -78,7 +78,7 @@ TEST_CASE("Ref conversions") {
 
 TEST_CASE("Ref reassignment") {
     i32              a{1}, b{2};
-    detail::Ref<i32> opt{a};
+    detail::ref<i32> opt{a};
     CHECK(*opt == 1);
 
     opt = b;
@@ -90,7 +90,7 @@ TEST_CASE("Ref reassignment") {
 
 TEST_CASE("Ref mutability") {
     i32                    val{42};
-    const detail::Ref<i32> opt{val};
+    const detail::ref<i32> opt{val};
     CHECK(*opt == 42);
 
     *opt = 1;
@@ -101,10 +101,10 @@ TEST_CASE("Ref mutability") {
 
 TEST_CASE("Safe optional default equality") {
     i32                x{10}, y{10}, z{20};
-    const Option<i32&> opt_x{x};
-    const Option<i32&> opt_y{y};
-    const Option<i32&> opt_z{z};
-    const Option<i32&> opt_null;
+    const option<i32&> opt_x{x};
+    const option<i32&> opt_y{y};
+    const option<i32&> opt_z{z};
+    const option<i32&> opt_null;
 
     CHECK(safe_eq<i32&>(opt_x, opt_y));
     CHECK_FALSE(safe_eq<i32&>(opt_x, opt_z));
@@ -114,8 +114,8 @@ TEST_CASE("Safe optional default equality") {
 
 TEST_CASE("Safe optional custom equality") {
     std::string                s1 = "APPLE", s2 = "apple";
-    const Option<std::string&> opt1{s1};
-    const Option<std::string&> opt2{s2};
+    const option<std::string&> opt1{s1};
+    const option<std::string&> opt2{s2};
 
     CHECK(safe_eq<std::string&>(opt1, opt2, [](const std::string& a, const std::string& b) -> bool {
         return std::ranges::equal(
@@ -125,7 +125,7 @@ TEST_CASE("Safe optional custom equality") {
 
 TEST_CASE("Ref transform on value") {
     i32          i{9};
-    Option<i32&> opt_i{i};
+    option<i32&> opt_i{i};
 
     const auto res{opt_i.transform([](const i32& i) -> i32 { return i + 2; })};
     REQUIRE(res);
@@ -133,14 +133,14 @@ TEST_CASE("Ref transform on value") {
 }
 
 TEST_CASE("Ref transform on none") {
-    Option<i32&> opt_i{};
+    option<i32&> opt_i{};
 
     const auto res{opt_i.transform([](const i32& i) -> i32 { return i + 2; })};
     CHECK_FALSE(res);
 }
 
 TEST_CASE("Boolean wrapper") {
-    Tribool b;
+    tribool b;
     CHECK_FALSE(b.has_value());
     CHECK_FALSE(b.value_or(false));
     CHECK_FALSE(b.value_or(0));
@@ -152,7 +152,7 @@ TEST_CASE("Boolean wrapper") {
 
 TEST_CASE("Boolean-std optional conversion") {
     std::optional<bool> std_b{true};
-    Tribool             my_b = std_b;
+    tribool             my_b = std_b;
     REQUIRE(std_b.has_value());
     CHECK(*std_b == *my_b);
 
@@ -166,7 +166,7 @@ TEST_CASE("Boolean-std optional conversion") {
 }
 
 TEST_CASE("Index wrapper") {
-    OptSize i;
+    opt_size i;
     CHECK_FALSE(i.has_value());
 
     i = 0;
@@ -176,7 +176,7 @@ TEST_CASE("Index wrapper") {
 
 TEST_CASE("Index-std optional conversion") {
     std::optional<usize> std_i{42};
-    OptSize              my_i = std_i;
+    opt_size              my_i = std_i;
     REQUIRE(std_i.has_value());
     CHECK(*std_i == *my_i);
 
@@ -198,14 +198,14 @@ enum class OptionableEnum : u8 {
 };
 
 TEST_CASE("CompactOpt with enum") {
-    STATIC_REQUIRE_FALSE(traits::Compactable<i32>);
-    STATIC_REQUIRE_FALSE(traits::Compactable<NonOptionableEnum>);
-    STATIC_REQUIRE(traits::Compactable<OptionableEnum>);
-    STATIC_REQUIRE(sizeof(Option<OptionableEnum>) == sizeof(OptionableEnum));
+    STATIC_REQUIRE_FALSE(Compactable<i32>);
+    STATIC_REQUIRE_FALSE(Compactable<NonOptionableEnum>);
+    STATIC_REQUIRE(Compactable<OptionableEnum>);
+    STATIC_REQUIRE(sizeof(option<OptionableEnum>) == sizeof(OptionableEnum));
 }
 
 TEST_CASE("Optional enum wrapper") {
-    Option<OptionableEnum> e;
+    option<OptionableEnum> e;
     CHECK_FALSE(e.has_value());
 
     e = OptionableEnum::A;
@@ -214,21 +214,21 @@ TEST_CASE("Optional enum wrapper") {
 }
 
 TEST_CASE("Enum transform on value") {
-    Option<OptionableEnum> e{OptionableEnum::A};
+    option<OptionableEnum> e{OptionableEnum::A};
     const auto res{e.transform([](const OptionableEnum&) -> auto { return OptionableEnum::B; })};
     REQUIRE(res);
     CHECK(*res == OptionableEnum::B);
 }
 
 TEST_CASE("Enum transform on none") {
-    Option<OptionableEnum> e{};
+    option<OptionableEnum> e{};
     const auto res{e.transform([](const OptionableEnum&) -> auto { return OptionableEnum::B; })};
     CHECK_FALSE(res);
 }
 
 TEST_CASE("Enum-std optional conversion") {
     std::optional<OptionableEnum> std_i{OptionableEnum::A};
-    Option<OptionableEnum>        my_i = std_i;
+    option<OptionableEnum>        my_i = std_i;
     REQUIRE(std_i.has_value());
     CHECK(*std_i == *my_i);
 

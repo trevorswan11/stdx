@@ -46,9 +46,9 @@ concept BoundedEnum = ValidEnum<Enum> && requires {
 template <auto Lower, auto Upper>
     requires(BoundedEnum<decltype(Lower)> && std::same_as<decltype(Lower), decltype(Upper)>)
 consteval auto enum_range() noexcept {
-    using E = decltype(Lower);
-    constexpr auto opt_low{magic_enum::enum_index<E>(Lower)};
-    constexpr auto opt_high{magic_enum::enum_index<E>(Upper)};
+    using enum_type = decltype(Lower);
+    constexpr auto opt_low{magic_enum::enum_index<enum_type>(Lower)};
+    constexpr auto opt_high{magic_enum::enum_index<enum_type>(Upper)};
     static_assert(opt_low && opt_high, "Bounds must be valid enumerations");
 
     constexpr usize low_idx{*opt_low};
@@ -56,9 +56,9 @@ consteval auto enum_range() noexcept {
     static_assert(high_idx >= low_idx, "Range must be strictly increasing");
 
     // The range is inclusive to circumvent weird indexing
-    constexpr usize      count{high_idx - low_idx + 1};
-    std::array<E, count> range;
-    for (usize i{0}; i < range.size(); ++i) { range[i] = enum_value<E>(low_idx + i); }
+    constexpr usize              count{high_idx - low_idx + 1};
+    std::array<enum_type, count> range;
+    for (usize i{0}; i < range.size(); ++i) { range[i] = enum_value<enum_type>(low_idx + i); }
     return range;
 }
 

@@ -4,12 +4,12 @@
 
 namespace stdx::tests::helpers {
 
-struct Base {
-    virtual ~Base() = default;
+struct base {
+    virtual ~base() = default;
     i32 x{10};
 };
 
-struct Derived : Base {
+struct derived : base {
     i32 y{20};
 };
 

@@ -24,7 +24,7 @@ namespace stdx::fixed {
 
 namespace detail {
 
-class Metadata {
+class hm_metadata {
   public:
     enum class Fingerprint : u8 {
         OPEN      = 0,
@@ -32,20 +32,20 @@ class Metadata {
     };
 
   public:
-    constexpr Metadata() noexcept = default;
-    constexpr Metadata(u8 fingerprint, bool used) noexcept {
+    constexpr hm_metadata() noexcept = default;
+    constexpr hm_metadata(u8 fingerprint, bool used) noexcept {
         raw_ |= used << USED_OFFSET;
         raw_ |= fingerprint & FINGERPRINT_MASK;
     }
 
-    constexpr Metadata(Fingerprint fingerprint, bool used) noexcept
-        : Metadata{static_cast<u8>(fingerprint), used} {}
+    constexpr hm_metadata(Fingerprint fingerprint, bool used) noexcept
+        : hm_metadata{static_cast<u8>(fingerprint), used} {}
 
-    [[nodiscard]] static constexpr auto make_open_slot() noexcept -> Metadata {
+    [[nodiscard]] static constexpr auto make_open_slot() noexcept -> hm_metadata {
         return {Fingerprint::OPEN, false};
     }
 
-    [[nodiscard]] static constexpr auto make_tombstone_slot() noexcept -> Metadata {
+    [[nodiscard]] static constexpr auto make_tombstone_slot() noexcept -> hm_metadata {
         return {Fingerprint::TOMBSTONE, false};
     }
 
@@ -72,7 +72,7 @@ class Metadata {
         return FINGERPRINT_MASK & (hash >> (64 - USED_OFFSET));
     }
 
-    [[nodiscard]] constexpr auto operator==(const Metadata&) const noexcept -> bool = default;
+    [[nodiscard]] constexpr auto operator==(const hm_metadata&) const noexcept -> bool = default;
 
   private:
     static constexpr u8 FINGERPRINT_MASK{0x7F};
@@ -85,16 +85,16 @@ class Metadata {
 
 // Facilitates const and non-const behavior
 template <typename HashMapSelf, typename Key, typename Value, usize Capacity>
-class HashMapIterator {
+class hm_iterator {
   public:
     using iterator_category = std::forward_iterator_tag;
     using value_type        = std::pair<const Key, Value>;
     using difference_type   = idiff;
     using pointer           = void;
-    using reference         = std::pair<const Key&, traits::const_dispatch_t<HashMapSelf, Value>&>;
+    using reference         = std::pair<const Key&, const_dispatch_t<HashMapSelf, Value>&>;
 
     // Facilitates `->` operator usage without violating memory safety
-    struct Proxy {
+    struct proxy {
         reference value;
 
         [[nodiscard]] constexpr auto operator->() const noexcept -> const reference* {
@@ -103,13 +103,13 @@ class HashMapIterator {
     };
 
   public:
-    constexpr HashMapIterator() noexcept = default;
-    constexpr HashMapIterator(HashMapSelf& hm, usize index) noexcept : hm_{&hm}, index_{index} {
+    constexpr hm_iterator() noexcept = default;
+    constexpr hm_iterator(HashMapSelf& hm, usize index) noexcept : hm_{&hm}, index_{index} {
         next();
     }
 
     // The index is always advanced up to the next occupied slot
-    [[nodiscard]] constexpr auto operator++() -> HashMapIterator& {
+    [[nodiscard]] constexpr auto operator++() -> hm_iterator& {
         if (index_ < Capacity) {
             index_++;
             next();
@@ -117,8 +117,8 @@ class HashMapIterator {
         return *this;
     }
 
-    [[nodiscard]] constexpr auto operator++(int) -> HashMapIterator {
-        HashMapIterator it{*this};
+    [[nodiscard]] constexpr auto operator++(int) -> hm_iterator {
+        hm_iterator it{*this};
         ++(*this);
         return it;
     }
@@ -128,9 +128,9 @@ class HashMapIterator {
         return reference{*(hm_->key_data() + index_), *(hm_->value_data() + index_)};
     }
 
-    [[nodiscard]] constexpr auto operator->() const noexcept -> Proxy { return {operator*()}; }
+    [[nodiscard]] constexpr auto operator->() const noexcept -> proxy { return {operator*()}; }
 
-    [[nodiscard]] constexpr auto operator==(const HashMapIterator& other) const noexcept -> bool {
+    [[nodiscard]] constexpr auto operator==(const hm_iterator& other) const noexcept -> bool {
         return hm_ == other.hm_ && index_ == other.index_;
     }
 
@@ -154,23 +154,23 @@ class HashMapIterator {
 // https://github.com/trevorswan11/stdx/blob/4577f3279f5ab09e32a13b8cacb044da686e64bd/src/util/containers/hash_map.c
 template <typename Key, typename Value, usize Capacity, typename Hash, typename Equal>
     requires(is_power_of_two(Capacity))
-class HashMap {
+class hash_map {
   public:
-    using iterator       = HashMapIterator<HashMap, Key, Value, Capacity>;
-    using const_iterator = HashMapIterator<std::add_const_t<HashMap>, Key, Value, Capacity>;
+    using iterator       = hm_iterator<hash_map, Key, Value, Capacity>;
+    using const_iterator = hm_iterator<std::add_const_t<hash_map>, Key, Value, Capacity>;
 
   public:
-    constexpr HashMap() noexcept = default;
-    constexpr ~HashMap() { clear(); }
-    constexpr ~HashMap()
-        requires(traits::TriviallyDestructible<Key> && traits::TriviallyDestructible<Value>)
+    constexpr hash_map() noexcept = default;
+    constexpr ~hash_map() { clear(); }
+    constexpr ~hash_map()
+        requires(TriviallyDestructible<Key> && TriviallyDestructible<Value>)
     = default;
 
-    constexpr HashMap(const HashMap&)
-        requires(traits::TriviallyCopyable<Key> && traits::TriviallyCopyable<Value>)
+    constexpr hash_map(const hash_map&)
+        requires(TriviallyCopyable<Key> && TriviallyCopyable<Value>)
     = default;
 
-    constexpr HashMap(const HashMap& other) {
+    constexpr hash_map(const hash_map& other) {
         for (usize i{0}; i < Capacity; ++i) {
             metadata_[i] = other.metadata_[i];
             if (metadata_[i].is_used()) {
@@ -181,19 +181,19 @@ class HashMap {
         size_ = other.size_;
     }
 
-    constexpr auto operator=(const HashMap&) -> HashMap&
-        requires(traits::TriviallyCopyable<Key> && traits::TriviallyCopyable<Value>)
+    constexpr auto operator=(const hash_map&) -> hash_map&
+        requires(TriviallyCopyable<Key> && TriviallyCopyable<Value>)
     = default;
 
-    constexpr auto operator=(const HashMap& other) -> HashMap& {
+    constexpr auto operator=(const hash_map& other) -> hash_map& {
         if (this != &other) {
-            HashMap temp{other};
+            hash_map temp{other};
             swap(temp);
         }
         return *this;
     }
 
-    constexpr HashMap(HashMap&& other) noexcept {
+    constexpr hash_map(hash_map&& other) noexcept {
         for (usize i{0}; i < Capacity; ++i) {
             metadata_[i] = other.metadata_[i];
             if (metadata_[i].is_used()) {
@@ -205,23 +205,23 @@ class HashMap {
         other.clear();
     }
 
-    constexpr auto operator=(HashMap&& other) noexcept -> HashMap& {
+    constexpr auto operator=(hash_map&& other) noexcept -> hash_map& {
         if (this != &other) {
             clear();
-            HashMap temp{std::move(other)};
+            hash_map temp{std::move(other)};
             swap(temp);
         }
         return *this;
     }
 
-    [[nodiscard]] constexpr auto get_metadata() const noexcept -> gsl::span<const Metadata> {
+    [[nodiscard]] constexpr auto get_metadata() const noexcept -> gsl::span<const hm_metadata> {
         return metadata_;
     }
 
     // Constructs a value at the key or updates it if there was already an item present
     template <typename... Args> constexpr auto emplace(const Key& key, Args&&... args) -> void {
         const auto hashed{Hash{}(key)};
-        const auto fingerprint{Metadata::take_fingerprint(hashed)};
+        const auto fingerprint{hm_metadata::take_fingerprint(hashed)};
 
         usize limit{Capacity};
         usize first_tombstone_idx{Capacity};
@@ -272,7 +272,7 @@ class HashMap {
     // Returns a reference to the value at the key or none if the key is not present
     template <typename Self>
     [[nodiscard]] constexpr auto get_opt(this Self&& self, const Key& key) noexcept
-        -> Option<traits::const_dispatch_t<Self, Value>&> {
+        -> option<const_dispatch_t<Self, Value>&> {
         if (const auto idx{self.index_of(key)}) { return *(self.value_data() + *idx); }
         return none;
     }
@@ -294,11 +294,11 @@ class HashMap {
     [[nodiscard]] constexpr auto capacity() const noexcept -> usize { return Capacity; }
 
     template <typename Self> [[nodiscard]] constexpr auto begin(this Self&& self) noexcept {
-        return HashMapIterator<std::remove_reference_t<Self>, Key, Value, Capacity>{self, 0};
+        return hm_iterator<std::remove_reference_t<Self>, Key, Value, Capacity>{self, 0};
     }
 
     template <typename Self> [[nodiscard]] constexpr auto end(this Self&& self) noexcept {
-        return HashMapIterator<std::remove_reference_t<Self>, Key, Value, Capacity>{self, Capacity};
+        return hm_iterator<std::remove_reference_t<Self>, Key, Value, Capacity>{self, Capacity};
     }
 
     [[nodiscard]] constexpr auto key_data(this auto&& self) noexcept -> auto* {
@@ -311,21 +311,21 @@ class HashMap {
 
     // Destroys all key-value pairs and resets the tracked size
     constexpr auto clear() noexcept -> void {
-        if constexpr (!traits::TriviallyDestructible<Key> ||
-                      !traits::TriviallyDestructible<Value>) {
+        if constexpr (!TriviallyDestructible<Key> ||
+                      !TriviallyDestructible<Value>) {
             for (usize i{0}; i < Capacity; ++i) {
                 if (metadata_[i].is_used()) {
-                    if constexpr (!traits::TriviallyDestructible<Key>) {
+                    if constexpr (!TriviallyDestructible<Key>) {
                         std::destroy_at(key_data() + i);
                     }
-                    if constexpr (!traits::TriviallyDestructible<Value>) {
+                    if constexpr (!TriviallyDestructible<Value>) {
                         std::destroy_at(value_data() + i);
                     }
                 }
             }
         }
 
-        for (auto& m : metadata_) { m = Metadata::make_open_slot(); }
+        for (auto& m : metadata_) { m = hm_metadata::make_open_slot(); }
         size_ = 0;
     }
 
@@ -333,11 +333,11 @@ class HashMap {
     static constexpr auto HASH_MASK{Capacity - 1};
 
   private:
-    constexpr auto index_of(const Key& key) const noexcept -> Option<usize> {
+    constexpr auto index_of(const Key& key) const noexcept -> option<usize> {
         if (size_ == 0) { return none; }
 
         const auto hashed{Hash{}(key)};
-        const auto fingerprint{Metadata::take_fingerprint(hashed)};
+        const auto fingerprint{hm_metadata::take_fingerprint(hashed)};
 
         usize limit{Capacity};
         usize probe{static_cast<usize>(hashed & HASH_MASK)};
@@ -356,7 +356,7 @@ class HashMap {
     }
 
     // https://en.cppreference.com/cpp/algorithm/swap
-    constexpr auto swap(HashMap& other) noexcept -> void {
+    constexpr auto swap(hash_map& other) noexcept -> void {
         using std::swap;
         for (usize i{0}; i < Capacity; ++i) {
             const bool lhs_used{metadata_[i].is_used()};
@@ -387,12 +387,12 @@ class HashMap {
     }
 
     // ADL dispatcher for copy assignment
-    constexpr friend auto swap(HashMap& lhs, HashMap& rhs) noexcept -> void { lhs.swap(rhs); }
+    constexpr friend auto swap(hash_map& lhs, hash_map& rhs) noexcept -> void { lhs.swap(rhs); }
 
   private:
-    std::array<Metadata, Capacity> metadata_{};
-    Storage<Key, Capacity>         keys_;
-    Storage<Value, Capacity>       values_;
+    std::array<hm_metadata, Capacity> metadata_{};
+    storage<Key, Capacity>         keys_;
+    storage<Value, Capacity>       values_;
     usize                          size_{0};
 };
 
@@ -404,18 +404,18 @@ template <
     typename Value,
     usize Capacity,
     typename Hash =
-        std::conditional_t<traits::StringLike<Key>, hash::crc::Hash<Key>, hash::Hash<Key>>,
+        std::conditional_t<StringLike<Key>, hash::crc::hash<Key>, hash::hash<Key>>,
     typename Compare =
-        std::conditional_t<traits::StringLike<Key>, hash::StringLikeEq<Key>, std::equal_to<Key>>>
-using HashMap = detail::HashMap<Key, Value, ceil_power_of_two(Capacity), Hash, Compare>;
+        std::conditional_t<StringLike<Key>, hash::string_like_eq<Key>, std::equal_to<Key>>>
+using hash_map = detail::hash_map<Key, Value, ceil_power_of_two(Capacity), Hash, Compare>;
 
 // Construct a hash map from a list of pairs
-template <traits::InsertablePair... Pairs>
+template <InsertablePair... Pairs>
     requires(sizeof...(Pairs) > 0)
 [[nodiscard]] constexpr auto make_hash_map(Pairs&&... kv_pairs) noexcept {
     using std::get;
-    HashMap<traits::common_tuple_type_t<0, Pairs...>,
-            traits::common_tuple_type_t<1, Pairs...>,
+    hash_map<common_tuple_type_t<0, Pairs...>,
+            common_tuple_type_t<1, Pairs...>,
             sizeof...(Pairs)>
         map;
     (...,

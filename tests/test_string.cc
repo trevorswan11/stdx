@@ -9,9 +9,9 @@
 namespace stdx::tests {
 
 TEST_CASE("String traits") {
-    STATIC_CHECK(traits::StringLike<std::string>);
-    STATIC_CHECK(traits::StringLike<std::string_view>);
-    STATIC_CHECK(traits::StringLike<const char*>);
+    STATIC_CHECK(StringLike<std::string>);
+    STATIC_CHECK(StringLike<std::string_view>);
+    STATIC_CHECK(StringLike<const char*>);
 }
 
 TEST_CASE("Byte type requirement") {

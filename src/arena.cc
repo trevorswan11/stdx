@@ -7,7 +7,7 @@
 namespace stdx {
 
 // https://github.com/trevorswan11/stdx/blob/772707146faa9315c24fb079fd759f3715442db1/old/src/util/arena.c
-auto Arena::alloc(usize size, usize align) -> void* {
+auto arena::alloc(usize size, usize align) -> void* {
     PROFILE_FUNCTION();
     if (current_) {
         auto        raw_addr{reinterpret_cast<uptr>(current_ + 1)};
@@ -28,33 +28,33 @@ auto Arena::alloc(usize size, usize align) -> void* {
     }
 
     // Otherwise a new block needs to be created for the memory
-    return Block::alloc(*this, size, align);
+    return block::alloc(*this, size, align);
 }
 
-auto Arena::clear() noexcept -> void {
+auto arena::clear() noexcept -> void {
     PROFILE_FUNCTION();
-    Block* block = head_;
-    while (block) {
-        Block* next = block->next;
-        ::operator delete(block);
-        block = next;
+    block* blk = head_;
+    while (blk) {
+        block* next{blk->next};
+        ::operator delete(blk);
+        blk = next;
     }
     reset();
 }
 
-auto Arena::Block::alloc(Arena& a, usize size, usize align) -> void* {
+auto arena::block::alloc(arena& a, usize size, usize align) -> void* {
     PROFILE_FUNCTION();
-    void* raw   = ::operator new(sizeof(Block) + BLOCK_SIZE);
-    auto* block = new (raw) Block{};
+    void* raw   = ::operator new(sizeof(block) + BLOCK_SIZE);
+    auto* blk = new (raw) block{};
 
     if (!a.head_) {
-        a.head_ = block;
+        a.head_ = blk;
     } else {
         ASSERT(a.current_);
-        a.current_->next = block;
+        a.current_->next = blk;
     }
 
-    a.current_ = block;
+    a.current_ = blk;
     a.offset_  = 0;
     return a.alloc(size, align);
 }

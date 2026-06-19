@@ -180,11 +180,11 @@ Timer::~Timer() {
 #else
 namespace stdx {
 
-Profiler::Profiler(std::string_view) {}
-Profiler::~Profiler() = default;
+profiler::profiler(std::string_view) {}
+profiler::~profiler() = default;
 
-Timer::Timer(const char*) : name_{nullptr} {}
-Timer::~Timer() = default;
+timer::timer(const char*) : name_{nullptr} {}
+timer::~timer() = default;
 
 } // namespace stdx
 #endif

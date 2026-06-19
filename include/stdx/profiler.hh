@@ -6,26 +6,26 @@
 namespace stdx {
 
 // Opens a Chrome-trace JSON profiling session next to the given binary.
-struct Profiler {
-    explicit Profiler(std::string_view binary_path);
-    ~Profiler();
+struct profiler {
+    explicit profiler(std::string_view binary_path);
+    ~profiler();
 
-    Profiler(const Profiler&)                        = delete;
-    auto operator=(const Profiler&) -> Profiler&     = delete;
-    Profiler(Profiler&&) noexcept                    = delete;
-    auto operator=(Profiler&&) noexcept -> Profiler& = delete;
+    profiler(const profiler&)                        = delete;
+    auto operator=(const profiler&) -> profiler&     = delete;
+    profiler(profiler&&) noexcept                    = delete;
+    auto operator=(profiler&&) noexcept -> profiler& = delete;
 };
 
 // Records a named time range.
-class Timer {
+class timer {
   public:
-    explicit Timer(const char* name);
-    ~Timer();
+    explicit timer(const char* name);
+    ~timer();
 
-    Timer(const Timer&)                        = delete;
-    auto operator=(const Timer&) -> Timer&     = delete;
-    Timer(Timer&&) noexcept                    = delete;
-    auto operator=(Timer&&) noexcept -> Timer& = delete;
+    timer(const timer&)                        = delete;
+    auto operator=(const timer&) -> timer&     = delete;
+    timer(timer&&) noexcept                    = delete;
+    auto operator=(timer&&) noexcept -> timer& = delete;
 
   private:
     [[maybe_unused]] const char*                                        name_;
@@ -38,5 +38,5 @@ class Timer {
 #define PROFILE_CONCAT(a, b) PROFILE_CONCAT_INNER(a, b)
 
 #define PROFILE_SCOPE(name) \
-    ::stdx::Timer PROFILE_CONCAT(timer, __LINE__) { name }
+    ::stdx::timer PROFILE_CONCAT(timer, __LINE__) { name }
 #define PROFILE_FUNCTION() PROFILE_SCOPE(__PRETTY_FUNCTION__)

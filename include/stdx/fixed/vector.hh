@@ -16,7 +16,7 @@
 namespace stdx::fixed {
 
 // A fixed-size zero-allocation container with a vector-like interface
-template <typename Item, usize Capacity> class Vector {
+template <typename Item, usize Capacity> class vector {
   public:
     using value_type      = Item;
     using size_type       = usize;
@@ -26,25 +26,25 @@ template <typename Item, usize Capacity> class Vector {
     using const_iterator  = const Item*;
 
   public:
-    Vector() = default;
-    ~Vector() { clear(); }
-    ~Vector()
-        requires traits::TriviallyDestructible<Item>
+    vector() = default;
+    ~vector() { clear(); }
+    ~vector()
+        requires TriviallyDestructible<Item>
     = default;
 
     // Constructs the vector in place by emplacing each item into the buffer
     template <typename... Is>
         requires(sizeof...(Is) <= Capacity)
-    constexpr explicit Vector(Is&&... items) {
+    constexpr explicit vector(Is&&... items) {
         (..., emplace_back(std::forward<Is>(items)));
     }
 
-    constexpr Vector(const Vector&)
-        requires traits::TriviallyCopyable<Item>
+    constexpr vector(const vector&)
+        requires TriviallyCopyable<Item>
     = default;
 
-    constexpr Vector(const Vector& other) {
-        if constexpr (traits::TriviallyCopyable<Item>) {
+    constexpr vector(const vector& other) {
+        if constexpr (TriviallyCopyable<Item>) {
             size_ = other.size_;
             std::copy(other.begin(), other.end(), data());
         } else {
@@ -52,20 +52,20 @@ template <typename Item, usize Capacity> class Vector {
         }
     }
 
-    constexpr auto operator=(const Vector&) -> Vector&
-        requires traits::TriviallyCopyable<Item>
+    constexpr auto operator=(const vector&) -> vector&
+        requires TriviallyCopyable<Item>
     = default;
 
-    constexpr auto operator=(const Vector& other) -> Vector& {
+    constexpr auto operator=(const vector& other) -> vector& {
         if (this != &other) {
-            Vector temp{other};
+            vector temp{other};
             swap(temp);
         }
         return *this;
     }
 
-    constexpr Vector(Vector&& other) noexcept {
-        if constexpr (traits::TriviallyCopyable<Item>) {
+    constexpr vector(vector&& other) noexcept {
+        if constexpr (TriviallyCopyable<Item>) {
             size_ = other.size_;
             std::copy(other.begin(), other.end(), data());
         } else {
@@ -74,10 +74,10 @@ template <typename Item, usize Capacity> class Vector {
         other.clear();
     }
 
-    constexpr auto operator=(Vector&& other) noexcept -> Vector& {
+    constexpr auto operator=(vector&& other) noexcept -> vector& {
         if (this != &other) {
             clear();
-            if constexpr (traits::TriviallyCopyable<Item>) {
+            if constexpr (TriviallyCopyable<Item>) {
                 size_ = other.size_;
                 std::copy(other.begin(), other.end(), data());
             } else {
@@ -123,7 +123,7 @@ template <typename Item, usize Capacity> class Vector {
     }
 
     constexpr auto clear() noexcept -> void {
-        if constexpr (!traits::TriviallyDestructible<Item>) {
+        if constexpr (!TriviallyDestructible<Item>) {
             // The lion is now concerned with freeing non-trivial resources
             for (usize i{0}; i < size_; ++i) { std::destroy_at(data() + i); }
         }
@@ -132,8 +132,8 @@ template <typename Item, usize Capacity> class Vector {
 
   private:
     // https://en.cppreference.com/cpp/algorithm/swap
-    constexpr auto swap(Vector& other) noexcept -> void
-        requires(!traits::TriviallyCopyable<Item>)
+    constexpr auto swap(vector& other) noexcept -> void
+        requires(!TriviallyCopyable<Item>)
     {
         auto& smaller{(size_ < other.size_) ? *this : other};
         auto& larger{(size_ < other.size_) ? other : *this};
@@ -153,7 +153,7 @@ template <typename Item, usize Capacity> class Vector {
     }
 
   private:
-    detail::Storage<Item, Capacity> items_;
+    detail::storage<Item, Capacity> items_;
     usize                           size_{0};
 };
 

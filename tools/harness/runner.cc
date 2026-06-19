@@ -11,7 +11,7 @@ using namespace stdx;
 // Catch2 shenanigans
 extern "C" {
 auto launch(i32 argc, char** argv) -> i32 {
-    Profiler profiler{argv[0]};
+    profiler profiler{argv[0]};
     return Catch::Session().run(argc, argv);
 }
 }

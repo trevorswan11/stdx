@@ -12,8 +12,8 @@
 namespace stdx::tests {
 
 TEST_CASE("Metadata helpers") {
-    using fixed::detail::Metadata;
-    Metadata metadata;
+    using fixed::detail::hm_metadata;
+    hm_metadata metadata;
 
     metadata.open_up();
     CHECK(metadata.is_open());
@@ -26,25 +26,25 @@ TEST_CASE("Metadata helpers") {
     metadata.fill(255);
     REQUIRE(metadata.get_fingerprint() == 127);
 
-    REQUIRE(Metadata::take_fingerprint(300) == 0);
-    REQUIRE(Metadata::take_fingerprint(0xFFFFFFFFFFFFFFF) == 7);
-    REQUIRE(Metadata::take_fingerprint(0xAFFF5FFFFFFFFFFF) == 87);
-    REQUIRE(Metadata::take_fingerprint(0xFFFFFFFFFFFFFFFF) == 127);
+    REQUIRE(hm_metadata::take_fingerprint(300) == 0);
+    REQUIRE(hm_metadata::take_fingerprint(0xFFFFFFFFFFFFFFF) == 7);
+    REQUIRE(hm_metadata::take_fingerprint(0xAFFF5FFFFFFFFFFF) == 87);
+    REQUIRE(hm_metadata::take_fingerprint(0xFFFFFFFFFFFFFFFF) == 127);
 }
 
-TEST_CASE("HashMap construction") {
-    fixed::HashMap<u16, u32, 4> hm;
+TEST_CASE("hash_map construction") {
+    fixed::hash_map<u16, u32, 4> hm;
 
     STATIC_CHECK(hm.capacity() == 4);
     CHECK(hm.size() == 0);
 
     for (const auto& metadata : hm.get_metadata()) {
-        CHECK(metadata == fixed::detail::Metadata::make_open_slot());
+        CHECK(metadata == fixed::detail::hm_metadata::make_open_slot());
     }
 }
 
-TEST_CASE("HashMap basic usage") {
-    fixed::HashMap<u32, u32, 16> hm;
+TEST_CASE("hash_map basic usage") {
+    fixed::hash_map<u32, u32, 16> hm;
 
     constexpr u32 insert_count{10};
     for (u32 i = 0; i < insert_count; ++i) { hm.emplace(i, i); }
@@ -61,7 +61,7 @@ TEST_CASE("HashMap basic usage") {
     hm.remove(0);
 }
 
-TEST_CASE("HashMap helper constructor & clear") {
+TEST_CASE("hash_map helper constructor & clear") {
     auto hm{fixed::make_hash_map(std::pair{0, 0},
                                  std::pair{3, 3},
                                  std::pair{3, 4},
@@ -86,7 +86,7 @@ TEST_CASE("HashMap helper constructor & clear") {
     }
 }
 
-TEST_CASE("HashMap constexpr operations") {
+TEST_CASE("hash_map constexpr operations") {
     constexpr auto hm{fixed::make_hash_map(std::pair{0, 0}, std::pair{3, 3}, std::pair{2, 4})};
     STATIC_CHECK(hm.size() == 3);
     STATIC_CHECK(hm.contains(0));
@@ -94,7 +94,7 @@ TEST_CASE("HashMap constexpr operations") {
     STATIC_CHECK_FALSE(hm.contains(12));
 }
 
-TEST_CASE("HashMap constexpr string view key") {
+TEST_CASE("hash_map constexpr string view key") {
     using namespace std::string_view_literals;
     constexpr auto hm{fixed::make_hash_map(std::pair{"0"sv, 0},
                                            std::pair{"3"sv, 3},
@@ -108,67 +108,67 @@ TEST_CASE("HashMap constexpr string view key") {
     CHECK(hm.get("3") == 4);
 }
 
-using Tracker = helpers::RAIITracker;
+using tracker = helpers::raii_tracker;
 
-TEST_CASE("HashMap destructor correctness") {
-    Tracker::reset();
+TEST_CASE("hash_map destructor correctness") {
+    tracker::reset();
     {
-        fixed::HashMap<i32, Tracker, 5> hm;
+        fixed::hash_map<i32, tracker, 5> hm;
         hm.emplace(0, 0);
         hm.emplace(1, 0);
     }
-    CHECK(Tracker::destruct_count == 2);
+    CHECK(tracker::destruct_count == 2);
 }
 
-TEST_CASE("HashMap copy correctness") {
-    using HM = fixed::HashMap<i32, Tracker, 3>;
-    Tracker::reset();
+TEST_CASE("hash_map copy correctness") {
+    using hash_map = fixed::hash_map<i32, tracker, 3>;
+    tracker::reset();
     {
-        HM original;
+        hash_map original;
         original.emplace(0, 0);
         original.emplace(1, 0);
 
         SECTION("Copy constructor") {
-            HM copy{original}; // NOLINT
+            hash_map copy{original}; // NOLINT
             CHECK(copy.size() == 2);
-            CHECK(Tracker::copy_count == 2);
+            CHECK(tracker::copy_count == 2);
 
             // 2 in original, 2 in copy
-            CHECK(Tracker::live_count == 4);
+            CHECK(tracker::live_count == 4);
         }
 
         SECTION("Copy assignment") {
-            HM assigned;
+            hash_map assigned;
             assigned = original;
             CHECK(assigned.size() == 2);
 
             // Copy internally followed by move
-            CHECK(Tracker::copy_count == 2);
+            CHECK(tracker::copy_count == 2);
         }
     }
-    CHECK(Tracker::live_count == 0);
+    CHECK(tracker::live_count == 0);
 }
 
-TEST_CASE("HashMap move correctness") {
-    using HM = fixed::HashMap<i32, Tracker, 78>;
-    Tracker::reset();
+TEST_CASE("hash_map move correctness") {
+    using hash_map = fixed::hash_map<i32, tracker, 78>;
+    tracker::reset();
     {
-        HM original;
+        hash_map original;
         original.emplace(0, 0);
         original.emplace(1, 0);
 
-        HM destination{std::move(original)};
+        hash_map destination{std::move(original)};
         CHECK(destination.size() == 2);
         CHECK(original.empty());
-        CHECK(Tracker::move_count == 2);
-        CHECK(Tracker::live_count == 2);
+        CHECK(tracker::move_count == 2);
+        CHECK(tracker::live_count == 2);
     }
-    CHECK(Tracker::live_count == 0);
+    CHECK(tracker::live_count == 0);
 }
 
-TEST_CASE("HashMap self assignment") {
-    Tracker::reset();
-    fixed::HashMap<i32, Tracker, 3> hm;
+TEST_CASE("hash_map self assignment") {
+    tracker::reset();
+    fixed::hash_map<i32, tracker, 3> hm;
     hm.emplace(0, 0);
 
 #pragma clang diagnostic push
@@ -177,10 +177,10 @@ TEST_CASE("HashMap self assignment") {
 #pragma clang diagnostic pop
 
     CHECK(hm.size() == 1);
-    CHECK(Tracker::live_count == 1);
+    CHECK(tracker::live_count == 1);
 }
 
-TEST_CASE("HashMap non-const iterator") {
+TEST_CASE("hash_map non-const iterator") {
     auto hm{fixed::make_hash_map(std::pair{0, -1},
                                  std::pair{1, -1},
                                  std::pair{2, -1},
@@ -209,7 +209,7 @@ TEST_CASE("HashMap non-const iterator") {
     }
 }
 
-TEST_CASE("HashMap const iterator") {
+TEST_CASE("hash_map const iterator") {
     constexpr auto hm{fixed::make_hash_map(
         std::pair{0, -1}, std::pair{1, -1}, std::pair{5, -1}, std::pair{6, -1}, std::pair{7, -1})};
 
@@ -221,9 +221,9 @@ TEST_CASE("HashMap const iterator") {
     CHECK(iter_count == hm.size());
 }
 
-TEST_CASE("HashMap ranges compatibility") {
-    STATIC_REQUIRE(std::forward_iterator<fixed::HashMap<u16, u32, 4>::iterator>);
-    STATIC_REQUIRE(std::forward_iterator<fixed::HashMap<u16, u32, 4>::const_iterator>);
+TEST_CASE("hash_map ranges compatibility") {
+    STATIC_REQUIRE(std::forward_iterator<fixed::hash_map<u16, u32, 4>::iterator>);
+    STATIC_REQUIRE(std::forward_iterator<fixed::hash_map<u16, u32, 4>::const_iterator>);
 
     constexpr auto hm{fixed::make_hash_map(std::pair{-2, -1}, std::pair{1, -1}, std::pair{5, -1})};
     i32            sum{0};

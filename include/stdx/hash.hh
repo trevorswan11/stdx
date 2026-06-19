@@ -104,7 +104,7 @@ static constexpr std::array crc_table{
 }
 
 // This exists for constexpr string hashing only. `std::hash` is appropriate in other scenarios
-template <typename T> struct Hash {
+template <typename T> struct hash {
     using is_transparent = void;
     using is_avalanching = void;
 
@@ -115,7 +115,7 @@ template <typename T> struct Hash {
 
 } // namespace crc
 
-template <typename T> struct Hash {
+template <typename T> struct hash {
     [[nodiscard]] static constexpr auto operator()(const T& t) noexcept -> u64 {
         if constexpr (std::is_convertible_v<T, u64>) { return wyhash::hash(static_cast<u64>(t)); }
         return ankerl::unordered_dense::hash<T>{}(t);
@@ -123,7 +123,7 @@ template <typename T> struct Hash {
 };
 
 // https://github.com/martinus/unordered_dense#324-heterogeneous-overloads-using-is_transparent
-struct StringTransparentHash {
+struct string_transparent_hash {
     using is_transparent = void;
     using is_avalanching = void;
 
@@ -132,7 +132,7 @@ struct StringTransparentHash {
     }
 };
 
-template <typename S1> struct StringLikeEq {
+template <typename S1> struct string_like_eq {
     using is_transparent = void;
 
     template <typename S2>
@@ -142,28 +142,29 @@ template <typename S1> struct StringLikeEq {
 };
 
 // A 'high-quality' hash backed by `wyhash` with a `std::hash` fallback
-class Hasher {
+class hasher {
   public:
     // Hashes the provided value to use as the 'initial' hashed value
-    template <typename T> constexpr explicit Hasher(const T& initial) { combine(initial); }
-    constexpr Hasher() noexcept = default;
+    template <typename T> constexpr explicit hasher(const T& initial) { combine(initial); }
+    constexpr hasher() noexcept = default;
 
     // Hashes the provided value and mixes the result with the current hash
     template <typename T> constexpr auto combine(const T& value) noexcept -> void {
-        hash_ = wyhash::mix(hash_, hash(value) ^ 0xDABB1EDCABA1F01D);
+        hash_ = wyhash::mix(hash_, hash_impl(value) ^ 0xDABB1EDCABA1F01D);
     }
 
-    template <> constexpr auto combine<Hasher>(const Hasher& value) noexcept -> void {
+    template <> constexpr auto combine<hasher>(const hasher& value) noexcept -> void {
         hash_ = wyhash::mix(hash_, value.finalize());
     }
 
     // Call this after a full operation to get the resulting hash
     [[nodiscard]] constexpr auto finalize() const noexcept -> u64 { return hash_; }
-    [[nodiscard]] constexpr auto operator==(const Hasher&) const noexcept -> bool = default;
+    [[nodiscard]] constexpr auto operator==(const hasher&) const noexcept -> bool = default;
 
   private:
-    template <typename T> [[nodiscard]] static constexpr auto hash(const T& value) noexcept -> u64 {
-        return Hash<T>{}(value);
+    template <typename T>
+    [[nodiscard]] static constexpr auto hash_impl(const T& value) noexcept -> u64 {
+        return hash<T>{}(value);
     }
 
   private:
