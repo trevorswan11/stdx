@@ -1,4 +1,8 @@
-# stdx
+<h1 align="center">stdx</h1>
+
+<p align="center">
+<img src="https://img.shields.io/badge/C%2B%2B-23-blue?logo=c%2B%2B&logoColor=white" alt="C++23" /> <a href="https://ziglang.org/download/"><img src="https://img.shields.io/badge/Zig-0.16.0-orange?logo=zig" alt="Zig 0.16.0"/></a> <a href="LICENSE"><img src="https://img.shields.io/github/license/trevorswan11/stdx" alt="License" /></a> <a href="https://github.com/trevorswan11/stdx/actions/workflows/release.yml"><img src="https://github.com/trevorswan11/stdx/actions/workflows/release.yml/badge.svg" alt="CI" /></a> <a href="https://github.com/trevorswan11/stdx/actions/workflows/ci.yml"><img src="https://github.com/trevorswan11/stdx/actions/workflows/ci.yml/badge.svg" alt="CI" /></a> <img src="https://raw.githubusercontent.com/trevorswan11/stdx/coverage/coverage.svg" alt="Coverage" />
+</p>
 
 Stdx is a comprehensive and ever-expanding C++ standard library extension library, additionally featuring multiple utilities for Zig-build powered C++ projects. This library is closely tied to my other C++ work and development is typically done in tandem.
 
