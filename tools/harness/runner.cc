@@ -11,7 +11,7 @@ using namespace stdx;
 // Catch2 shenanigans
 extern "C" {
 auto launch(i32 argc, char** argv) -> i32 {
-    profiler profiler{argv[0]};
+    profiler p{argv[0]};
     return Catch::Session().run(argc, argv);
 }
 }
@@ -30,26 +30,26 @@ auto launch(i32 argc, char** argv) -> i32 {
 namespace {
 
 // https://github.com/catchorg/Catch2/blob/devel/docs/event-listeners.md
-class TestTimerListener : public Catch::EventListenerBase {
+class test_timer_listener : public Catch::EventListenerBase {
   public:
     using EventListenerBase::EventListenerBase;
 
     auto testCaseStarting(const Catch::TestCaseInfo& info) -> void override {
         auto line_info{info.lineInfo};
         name_  = fmt::format(R"({}: "{}" (line {}))", line_info.file, info.name, line_info.line);
-        timer_ = make_nullable_box<Timer>(name_.c_str());
+        timer_ = make_nullable_box<timer>(name_.c_str());
     }
 
     auto testCaseEnded(const Catch::TestCaseStats&) -> void override { timer_.reset(); }
 
   private:
-    std::string        name_;
-    NullableBox<Timer> timer_;
+    std::string         name_;
+    nullable_box<timer> timer_;
 };
 
 } // namespace
 
-CATCH_REGISTER_LISTENER(TestTimerListener)
+CATCH_REGISTER_LISTENER(test_timer_listener)
 #endif
 
 // Allocator shenanigans

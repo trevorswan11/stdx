@@ -32,7 +32,7 @@ namespace {
 
 template <typename T> using micros = chrono::duration<T, std::micro>;
 
-struct SessionDeleter {
+struct session_deleter {
     auto operator()(std::ofstream* ostream) -> void {
         if (!ostream) { return; }
         fmt::print(*ostream, "]}}");
@@ -40,21 +40,21 @@ struct SessionDeleter {
     }
 };
 
-constinit NullableBox<std::ofstream, SessionDeleter> session;
-constinit std::mutex                                 mutex;
+constinit nullable_box<std::ofstream, session_deleter> session;
+constinit std::mutex                                   mutex;
 
-class Buffer {
+class buffer {
   public:
     static constexpr usize BUF_SIZE{64UZ * 1'024UZ};
 
   public:
-    constexpr Buffer() = default;
-    ~Buffer()          = default;
+    constexpr buffer() = default;
+    ~buffer()          = default;
 
-    Buffer(const Buffer&)                        = delete;
-    auto operator=(const Buffer&) -> Buffer&     = delete;
-    Buffer(Buffer&&) noexcept                    = delete;
-    auto operator=(Buffer&&) noexcept -> Buffer& = delete;
+    buffer(const buffer&)                        = delete;
+    auto operator=(const buffer&) -> buffer&     = delete;
+    buffer(buffer&&) noexcept                    = delete;
+    auto operator=(buffer&&) noexcept -> buffer& = delete;
 
     // Must be called with the global mutex held
     auto flush() -> void {
@@ -64,21 +64,21 @@ class Buffer {
     }
 
   private:
-    fixed::Vector<char, BUF_SIZE> buf_;
+    fixed::vector<char, BUF_SIZE> buf_;
 
-    friend struct BufferManager;
+    friend struct buffer_manager;
 };
 
-struct BufferManager {
+struct buffer_manager {
   public:
-    static constexpr usize HEADROOM{Buffer::BUF_SIZE / 2};
+    static constexpr usize HEADROOM{buffer::BUF_SIZE / 2};
     static constexpr usize MAX_BUFFERS{1'024UZ};
-    static inline constinit fixed::Vector<Option<Buffer&>, MAX_BUFFERS> buffers;
+    static inline constinit fixed::vector<option<buffer&>, MAX_BUFFERS> buffers;
 
   public:
-    Buffer data;
+    buffer data;
 
-    BufferManager() {
+    buffer_manager() {
         std::scoped_lock lock{mutex};
 
         // Reuse empty slots to prevent buffer overflows
@@ -93,7 +93,7 @@ struct BufferManager {
         buffers.emplace_back(data);
     }
 
-    ~BufferManager() {
+    ~buffer_manager() {
         std::scoped_lock lock{mutex};
         data.flush();
 
@@ -106,10 +106,10 @@ struct BufferManager {
         }
     }
 
-    BufferManager(const BufferManager&)                        = delete;
-    auto operator=(const BufferManager&) -> BufferManager&     = delete;
-    BufferManager(BufferManager&&) noexcept                    = delete;
-    auto operator=(BufferManager&&) noexcept -> BufferManager& = delete;
+    buffer_manager(const buffer_manager&)                        = delete;
+    auto operator=(const buffer_manager&) -> buffer_manager&     = delete;
+    buffer_manager(buffer_manager&&) noexcept                    = delete;
+    auto operator=(buffer_manager&&) noexcept -> buffer_manager& = delete;
 
     // Gets a back inserter for libfmt to write out to
     [[nodiscard]] auto out() noexcept -> auto { return std::back_inserter(data.buf_); }
@@ -129,14 +129,14 @@ auto write_scope(std::string_view     name,
                  std::thread::id      tid) -> void {
     ASSERT(session && session->is_open(), "Writing cannot be done prior to initialization");
 
-    thread_local BufferManager manager;
+    thread_local buffer_manager manager;
     manager.ensure_capacity();
 
     fmt::format_to(
         manager.out(),
         R"(,{{"cat":"function","dur":{},"name":"{}","ph":"X","pid":0,"tid":"{}","ts":{:.3f}}})",
         elapsed.count(),
-        json::SanitizedString{name},
+        json::sanitized_string{name},
         tid,
         start.count());
 }
@@ -147,7 +147,7 @@ auto write_scope(std::string_view     name,
 
 } // namespace
 
-Profiler::Profiler(std::string_view path) {
+profiler::profiler(std::string_view path) {
     std::filesystem::path json{path};
     json.replace_filename(fmt::format("{}-profile.json", json.stem()));
 
@@ -157,18 +157,18 @@ Profiler::Profiler(std::string_view path) {
     fmt::print(*session, R"({{"otherData": {{}},"traceEvents":[{{}})");
 }
 
-Profiler::~Profiler() {
+profiler::~profiler() {
     std::scoped_lock lock{mutex};
-    for (auto& buf : BufferManager::buffers) {
+    for (auto& buf : buffer_manager::buffers) {
         if (buf) { buf->flush(); }
     }
-    BufferManager::buffers.clear();
+    buffer_manager::buffers.clear();
     session.reset();
 }
 
-Timer::Timer(const char* name) : name_{name}, start_{chrono::steady_clock::now()} {}
+timer::timer(const char* name) : name_{name}, start_{chrono::steady_clock::now()} {}
 
-Timer::~Timer() {
+timer::~timer() {
     auto           end{to_int_micros(chrono::steady_clock::now())};
     micros<double> high_res_start{start_.time_since_epoch()};
     auto           start{to_int_micros(start_)};

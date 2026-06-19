@@ -15,16 +15,16 @@
 
 namespace stdx {
 
-template <typename T> struct Nullable;
+template <typename T> struct nullable;
 
 // When true, allows the type to be used in a compact optional representation
 template <typename T>
 concept Compactable = !Reference<T> && requires(const T& t) {
-    { Nullable<T>::invalid() } -> std::same_as<T>;
-    { Nullable<T>::is_valid(t) } -> std::same_as<bool>;
+    { nullable<T>::invalid() } -> std::same_as<T>;
+    { nullable<T>::is_valid(t) } -> std::same_as<bool>;
 };
 
-template <ScopedEnum E> struct Nullable<E> {
+template <ScopedEnum E> struct nullable<E> {
     [[nodiscard]] static constexpr auto invalid() noexcept -> E {
         return static_cast<E>(std::numeric_limits<std::underlying_type_t<E>>::max());
     }
@@ -134,7 +134,7 @@ template <Compactable T> class compact_opt {
     // cppcheck-suppress-end noExplicitConstructor
 
     [[nodiscard]] constexpr auto has_value() const noexcept -> bool {
-        return Nullable<T>::is_valid(value_);
+        return nullable<T>::is_valid(value_);
     }
 
     [[nodiscard]] constexpr explicit operator bool() const noexcept { return has_value(); }
@@ -195,7 +195,7 @@ template <Compactable T> class compact_opt {
     }
 
   private:
-    static constexpr auto NO_VALUE{Nullable<T>::invalid()};
+    static constexpr auto NO_VALUE{nullable<T>::invalid()};
 
   private:
     T value_;
