@@ -13,7 +13,7 @@
 namespace stdx::tests {
 
 TEST_CASE("Metadata helpers") {
-    using fixed::detail::hash_map_metadata;
+    using fixed::detail::hash_table_metadata;
     hash_map_metadata metadata;
 
     metadata.open_up();
@@ -40,7 +40,7 @@ TEST_CASE("hash_map construction") {
     CHECK(hm.size() == 0);
 
     for (const auto& metadata : hm.get_metadata()) {
-        CHECK(metadata == fixed::detail::hash_map_metadata::make_open_slot());
+        CHECK(metadata == fixed::detail::hash_table_metadata::make_open_slot());
     }
 }
 

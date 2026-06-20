@@ -2,6 +2,7 @@
 
 #include <array>
 #include <bit>
+#include <concepts>
 #include <functional>
 #include <iterator>
 #include <memory>
@@ -24,7 +25,7 @@ namespace stdx::fixed {
 
 namespace detail {
 
-class hash_map_metadata {
+class hash_table_metadata {
   public:
     enum class fingerprint : u8 {
         OPEN      = 0,
@@ -32,20 +33,20 @@ class hash_map_metadata {
     };
 
   public:
-    constexpr hash_map_metadata() noexcept = default;
-    constexpr hash_map_metadata(u8 fingerprint, bool used) noexcept {
+    constexpr hash_table_metadata() noexcept = default;
+    constexpr hash_table_metadata(u8 fingerprint, bool used) noexcept {
         raw_ |= used << USED_OFFSET;
         raw_ |= fingerprint & FINGERPRINT_MASK;
     }
 
-    constexpr hash_map_metadata(fingerprint fingerprint, bool used) noexcept
-        : hash_map_metadata{static_cast<u8>(fingerprint), used} {}
+    constexpr hash_table_metadata(fingerprint fingerprint, bool used) noexcept
+        : hash_table_metadata{static_cast<u8>(fingerprint), used} {}
 
-    [[nodiscard]] static constexpr auto make_open_slot() noexcept -> hash_map_metadata {
+    [[nodiscard]] static constexpr auto make_open_slot() noexcept -> hash_table_metadata {
         return {fingerprint::OPEN, false};
     }
 
-    [[nodiscard]] static constexpr auto make_tombstone_slot() noexcept -> hash_map_metadata {
+    [[nodiscard]] static constexpr auto make_tombstone_slot() noexcept -> hash_table_metadata {
         return {fingerprint::TOMBSTONE, false};
     }
 
@@ -72,7 +73,7 @@ class hash_map_metadata {
         return FINGERPRINT_MASK & (hash >> (64 - USED_OFFSET));
     }
 
-    [[nodiscard]] constexpr auto operator==(const hash_map_metadata&) const noexcept
+    [[nodiscard]] constexpr auto operator==(const hash_table_metadata&) const noexcept
         -> bool = default;
 
   private:
@@ -85,14 +86,18 @@ class hash_map_metadata {
 };
 
 // Facilitates const and non-const behavior
-template <typename HashMapSelf, typename Key, typename Value, usize Capacity>
-class hash_map_iterator {
+template <typename HashTableSelf, typename Key, typename Value, usize Capacity>
+class hash_table_iterator {
   public:
-    using iterator_category = std::forward_iterator_tag;
-    using value_type        = std::pair<const Key, Value>;
-    using difference_type   = idiff;
-    using pointer           = void;
-    using reference         = std::pair<const Key&, const_dispatch_t<HashMapSelf, Value>&>;
+    static constexpr auto is_set = std::same_as<void, Value>;
+    using iterator_category      = std::forward_iterator_tag;
+    using value_type      = std::conditional_t<is_set, const Key, std::pair<const Key, Value>>;
+    using difference_type = idiff;
+    using pointer         = void;
+    using reference =
+        std::conditional_t<is_set,
+                           const Key&,
+                           std::pair<const Key&, const_dispatch_t<HashTableSelf, Value>&>>;
 
     // Facilitates `->` operator usage without violating memory safety
     struct proxy {
@@ -104,13 +109,14 @@ class hash_map_iterator {
     };
 
   public:
-    constexpr hash_map_iterator() noexcept = default;
-    constexpr hash_map_iterator(HashMapSelf& hm, usize index) noexcept : hm_{&hm}, index_{index} {
+    constexpr hash_table_iterator() noexcept = default;
+    constexpr hash_table_iterator(HashTableSelf& ht, usize index) noexcept
+        : ht_{&ht}, index_{index} {
         next();
     }
 
     // The index is always advanced up to the next occupied slot
-    [[nodiscard]] constexpr auto operator++() -> hash_map_iterator& {
+    [[nodiscard]] constexpr auto operator++() -> hash_table_iterator& {
         if (index_ < Capacity) {
             index_++;
             next();
@@ -118,21 +124,26 @@ class hash_map_iterator {
         return *this;
     }
 
-    [[nodiscard]] constexpr auto operator++(int) -> hash_map_iterator {
-        hash_map_iterator it{*this};
+    [[nodiscard]] constexpr auto operator++(int) -> hash_table_iterator {
+        hash_table_iterator it{*this};
         ++(*this);
         return it;
     }
 
     [[nodiscard]] constexpr auto operator*() const noexcept -> reference {
-        ASSERT(hm_, "Attempt to dereference null hash map");
-        return reference{*(hm_->key_data() + index_), *(hm_->value_data() + index_)};
+        ASSERT(ht_, "Attempt to dereference null hash map");
+        if constexpr (is_set) {
+            return reference{*(ht_->key_data() + index_)};
+        } else {
+            return reference{*(ht_->key_data() + index_), *(ht_->value_data() + index_)};
+        }
     }
 
     [[nodiscard]] constexpr auto operator->() const noexcept -> proxy { return {operator*()}; }
 
-    [[nodiscard]] constexpr auto operator==(const hash_map_iterator& other) const noexcept -> bool {
-        return hm_ == other.hm_ && index_ == other.index_;
+    [[nodiscard]] constexpr auto operator==(const hash_table_iterator& other) const noexcept
+        -> bool {
+        return ht_ == other.ht_ && index_ == other.index_;
     }
 
     [[nodiscard]] constexpr auto operator==(std::default_sentinel_t) const noexcept -> bool {
@@ -141,14 +152,14 @@ class hash_map_iterator {
 
   private:
     constexpr auto next() noexcept -> void {
-        if (!hm_) { return; }
-        const auto metadata{hm_->get_metadata()};
+        if (!ht_) { return; }
+        const auto metadata{ht_->get_metadata()};
         while (index_ < Capacity && !metadata[index_].is_used()) { index_++; }
     }
 
   private:
-    HashMapSelf* hm_{nullptr};
-    usize        index_{0};
+    HashTableSelf* ht_{nullptr};
+    usize          index_{0};
 };
 
 template <typename T>
@@ -158,23 +169,23 @@ concept IsTransparent = requires { typename T::is_transparent; };
 // https://github.com/trevorswan11/ghoti/blob/4577f3279f5ab09e32a13b8cacb044da686e64bd/src/util/containers/hash_map.c
 template <typename Key, typename Value, usize Capacity, typename Hash, typename Equal>
     requires(is_power_of_two(Capacity))
-class hash_map {
+class hash_table {
   public:
-    using iterator       = hash_map_iterator<hash_map, Key, Value, Capacity>;
-    using const_iterator = hash_map_iterator<std::add_const_t<hash_map>, Key, Value, Capacity>;
+    using iterator       = hash_table_iterator<hash_table, Key, Value, Capacity>;
+    using const_iterator = hash_table_iterator<std::add_const_t<hash_table>, Key, Value, Capacity>;
 
   public:
-    constexpr hash_map() noexcept = default;
-    constexpr ~hash_map() { clear(); }
-    constexpr ~hash_map()
+    constexpr hash_table() noexcept = default;
+    constexpr ~hash_table() { clear(); }
+    constexpr ~hash_table()
         requires(TriviallyDestructible<Key> && TriviallyDestructible<Value>)
     = default;
 
-    constexpr hash_map(const hash_map&)
+    constexpr hash_table(const hash_table&)
         requires(TriviallyCopyable<Key> && TriviallyCopyable<Value>)
     = default;
 
-    constexpr hash_map(const hash_map& other) {
+    constexpr hash_table(const hash_table& other) {
         for (usize i{0}; i < Capacity; ++i) {
             metadata_[i] = other.metadata_[i];
             if (metadata_[i].is_used()) {
@@ -185,19 +196,19 @@ class hash_map {
         size_ = other.size_;
     }
 
-    constexpr auto operator=(const hash_map&) -> hash_map&
+    constexpr auto operator=(const hash_table&) -> hash_table&
         requires(TriviallyCopyable<Key> && TriviallyCopyable<Value>)
     = default;
 
-    constexpr auto operator=(const hash_map& other) -> hash_map& {
+    constexpr auto operator=(const hash_table& other) -> hash_table& {
         if (this != &other) {
-            hash_map temp{other};
+            hash_table temp{other};
             swap(temp);
         }
         return *this;
     }
 
-    constexpr hash_map(hash_map&& other) noexcept {
+    constexpr hash_table(hash_table&& other) noexcept {
         for (usize i{0}; i < Capacity; ++i) {
             metadata_[i] = other.metadata_[i];
             if (metadata_[i].is_used()) {
@@ -209,17 +220,17 @@ class hash_map {
         other.clear();
     }
 
-    constexpr auto operator=(hash_map&& other) noexcept -> hash_map& {
+    constexpr auto operator=(hash_table&& other) noexcept -> hash_table& {
         if (this != &other) {
             clear();
-            hash_map temp{std::move(other)};
+            hash_table temp{std::move(other)};
             swap(temp);
         }
         return *this;
     }
 
     [[nodiscard]] constexpr auto get_metadata() const noexcept
-        -> gsl::span<const hash_map_metadata> {
+        -> gsl::span<const hash_table_metadata> {
         return metadata_;
     }
 
@@ -227,7 +238,7 @@ class hash_map {
     template <typename K, typename... Args>
     constexpr auto emplace(const K& key, Args&&... args) -> void {
         const auto hashed{Hash{}(key)};
-        const auto fingerprint{hash_map_metadata::take_fingerprint(hashed)};
+        const auto fingerprint{hash_table_metadata::take_fingerprint(hashed)};
 
         usize limit{Capacity};
         usize first_tombstone_idx{Capacity};
@@ -301,12 +312,12 @@ class hash_map {
     [[nodiscard]] constexpr auto capacity() const noexcept -> usize { return Capacity; }
 
     template <typename Self> [[nodiscard]] constexpr auto begin(this Self&& self) noexcept {
-        return hash_map_iterator<std::remove_reference_t<Self>, Key, Value, Capacity>{self, 0};
+        return hash_table_iterator<std::remove_reference_t<Self>, Key, Value, Capacity>{self, 0};
     }
 
     template <typename Self> [[nodiscard]] constexpr auto end(this Self&& self) noexcept {
-        return hash_map_iterator<std::remove_reference_t<Self>, Key, Value, Capacity>{self,
-                                                                                      Capacity};
+        return hash_table_iterator<std::remove_reference_t<Self>, Key, Value, Capacity>{self,
+                                                                                        Capacity};
     }
 
     [[nodiscard]] constexpr auto key_data(this auto&& self) noexcept -> auto* {
@@ -330,7 +341,7 @@ class hash_map {
             }
         }
 
-        for (auto& m : metadata_) { m = hash_map_metadata::make_open_slot(); }
+        for (auto& m : metadata_) { m = hash_table_metadata::make_open_slot(); }
         size_ = 0;
     }
 
@@ -343,7 +354,8 @@ class hash_map {
 
         // Open up all metadata for temporary tracking
         for (auto& metadata : metadata_) {
-            metadata = hash_map_metadata{hash_map_metadata::fingerprint::OPEN, metadata.is_used()};
+            metadata =
+                hash_table_metadata{hash_table_metadata::fingerprint::OPEN, metadata.is_used()};
         }
 
         // For each bucket, rehash to an index:
@@ -358,7 +370,7 @@ class hash_map {
             }
 
             const auto hashed{Hash{}(*(key_data() + current))};
-            const auto fingerprint{hash_map_metadata::take_fingerprint(hashed)};
+            const auto fingerprint{hash_table_metadata::take_fingerprint(hashed)};
             usize      probe{static_cast<usize>(hashed & HASH_MASK)};
 
             // Resolve probing conflicts
@@ -395,7 +407,7 @@ class hash_map {
                 std::destroy_at(value_data() + current);
 
                 metadata_[probe].bury();
-                metadata_[probe] = hash_map_metadata(metadata_[probe].get_fingerprint(), true);
+                metadata_[probe] = hash_table_metadata(metadata_[probe].get_fingerprint(), true);
                 metadata_[current].open_up();
             }
 
@@ -406,7 +418,7 @@ class hash_map {
         for (usize i{0}; auto& metadata : metadata_) {
             if (metadata.is_tombstone()) {
                 const auto hashed = Hash{}(*(key_data() + i));
-                metadata.fill(hash_map_metadata::take_fingerprint(hashed));
+                metadata.fill(hash_table_metadata::take_fingerprint(hashed));
             }
             i++;
         }
@@ -430,7 +442,7 @@ class hash_map {
         }();
 
         const auto hashed{Hash{}(normalized_key)};
-        const auto fingerprint{hash_map_metadata::take_fingerprint(hashed)};
+        const auto fingerprint{hash_table_metadata::take_fingerprint(hashed)};
 
         usize limit{Capacity};
         usize probe{static_cast<usize>(hashed & HASH_MASK)};
@@ -449,7 +461,7 @@ class hash_map {
     }
 
     // https://en.cppreference.com/cpp/algorithm/swap
-    constexpr auto swap(hash_map& other) noexcept -> void {
+    constexpr auto swap(hash_table& other) noexcept -> void {
         using std::swap;
         for (usize i{0}; i < Capacity; ++i) {
             const bool lhs_used{metadata_[i].is_used()};
@@ -480,13 +492,13 @@ class hash_map {
     }
 
     // ADL dispatcher for copy assignment
-    constexpr friend auto swap(hash_map& lhs, hash_map& rhs) noexcept -> void { lhs.swap(rhs); }
+    constexpr friend auto swap(hash_table& lhs, hash_table& rhs) noexcept -> void { lhs.swap(rhs); }
 
   private:
-    std::array<hash_map_metadata, Capacity> metadata_{};
-    storage<Key, Capacity>                  keys_;
-    storage<Value, Capacity>                values_;
-    usize                                   size_{0};
+    std::array<hash_table_metadata, Capacity> metadata_{};
+    storage<Key, Capacity>                    keys_;
+    storage<Value, Capacity>                  values_;
+    usize                                     size_{0};
 };
 
 } // namespace detail
@@ -499,7 +511,7 @@ template <
     typename Hash = std::conditional_t<StringLike<Key>, hash::crc::hash<Key>, hash::hash<Key>>,
     typename Compare =
         std::conditional_t<StringLike<Key>, hash::string_transparent_eq<Key>, std::equal_to<Key>>>
-using hash_map = detail::hash_map<Key, Value, ceil_power_of_two(Capacity), Hash, Compare>;
+using hash_map = detail::hash_table<Key, Value, ceil_power_of_two(Capacity), Hash, Compare>;
 
 // Construct a hash map from a list of pairs
 template <InsertablePair... Pairs>
