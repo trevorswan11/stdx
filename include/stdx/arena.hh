@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <limits>
 #include <utility>
 
 #include <gsl/pointers>
@@ -27,14 +28,27 @@ template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE> class arena {
 
     arena(const arena&)                    = delete;
     auto operator=(const arena&) -> arena& = delete;
+
     arena(arena&& other) noexcept
         : block_offset_{other.block_offset_}, block_head_{other.block_head_},
           block_current_{other.block_current_}, cleanup_head_{other.cleanup_head_} {
-        other.block_offset_ = 0;
-        other.block_head_   = nullptr;
-        other.cleanup_head_ = nullptr;
+        other.zero();
     }
-    auto operator=(arena&&) -> arena& = delete;
+
+    // The moved-into arena is completely deallocated
+    auto operator=(arena&& other) noexcept -> arena& {
+        if (this != &other) {
+            clear();
+
+            block_offset_  = other.block_offset_;
+            block_head_    = other.block_head_;
+            block_current_ = other.block_current_;
+            cleanup_head_  = other.cleanup_head_;
+
+            other.zero();
+        }
+        return *this;
+    }
 
     // cppcheck-suppress-begin [unreadVariable, internalAstError]
 
@@ -56,6 +70,8 @@ template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE> class arena {
     [[nodiscard]] auto make_span(usize count) -> gsl::span<T> {
         if (count == 0) { return {}; }
 
+        ASSERT(count <= (std::numeric_limits<usize>::max() / sizeof(T)),
+               "make_span count overflow");
         const auto size{sizeof(T) * count};
         void*      mem{alloc(size, alignof(T))};
         auto*      data{static_cast<T*>(mem)};
@@ -92,8 +108,7 @@ template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE> class arena {
             ::operator delete(blk);
             blk = next;
         }
-        block_head_ = nullptr;
-        reset();
+        zero();
     }
 
   private:
@@ -112,26 +127,26 @@ template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE> class arena {
 
     struct block {
         block* next{nullptr};
-
-        // Allocates a new block housed inside of its own memory region based on `BLOCK_SIZE`
-        [[nodiscard]] static auto alloc(arena& a, usize size, usize align) -> void* {
-            PROFILE_FUNCTION();
-            void* raw{::operator new(sizeof(block) + BlockSize)};
-            auto* blk{new (raw) block{}};
-
-            if (a.block_current_) {
-                a.block_current_->next = blk;
-            } else {
-                a.block_head_ = blk;
-            }
-            a.block_current_ = blk;
-
-            a.block_offset_ = 0;
-            return a.alloc(size, align);
-        }
     };
 
   private:
+    // Allocates a new block housed inside of its own memory region
+    [[nodiscard]] auto alloc_block(usize size, usize align) -> void* {
+        PROFILE_FUNCTION();
+        void* raw{::operator new(sizeof(block) + BlockSize)};
+        auto* blk{new (raw) block{}};
+
+        if (block_current_) {
+            block_current_->next = blk;
+        } else {
+            block_head_ = blk;
+        }
+        block_current_ = blk;
+
+        block_offset_ = 0;
+        return alloc(size, align);
+    }
+
     auto register_destructor(void* data, destructor_t destructor) -> void {
         void* node_mem{alloc(sizeof(cleanup_node), alignof(cleanup_node))};
         auto* node{new (node_mem) cleanup_node{
@@ -174,7 +189,15 @@ template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE> class arena {
         }
 
         // Otherwise a new block needs to be created for the memory
-        return block::alloc(*this, size, align);
+        return alloc_block(size, align);
+    }
+
+    // Reset's all internal fields to their initial state
+    constexpr auto zero() noexcept -> void {
+        block_offset_  = 0;
+        block_head_    = nullptr;
+        block_current_ = nullptr;
+        cleanup_head_  = nullptr;
     }
 
   private:

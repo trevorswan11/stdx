@@ -7,14 +7,14 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "helpers/raii_tracker.hh"
-#include "stdx/fixed/hash_map.hh"
+#include "stdx/fixed/hash_table.hh"
 #include "stdx/types.hh"
 
 namespace stdx::tests {
 
 TEST_CASE("Metadata helpers") {
     using fixed::detail::hash_table_metadata;
-    hash_map_metadata metadata;
+    hash_table_metadata metadata;
 
     metadata.open_up();
     CHECK(metadata.is_open());
@@ -27,10 +27,10 @@ TEST_CASE("Metadata helpers") {
     metadata.fill(255);
     REQUIRE(metadata.get_fingerprint() == 127);
 
-    REQUIRE(hash_map_metadata::take_fingerprint(300) == 0);
-    REQUIRE(hash_map_metadata::take_fingerprint(0xFFFFFFFFFFFFFFF) == 7);
-    REQUIRE(hash_map_metadata::take_fingerprint(0xAFFF5FFFFFFFFFFF) == 87);
-    REQUIRE(hash_map_metadata::take_fingerprint(0xFFFFFFFFFFFFFFFF) == 127);
+    REQUIRE(hash_table_metadata::take_fingerprint(300) == 0);
+    REQUIRE(hash_table_metadata::take_fingerprint(0xFFFFFFFFFFFFFFF) == 7);
+    REQUIRE(hash_table_metadata::take_fingerprint(0xAFFF5FFFFFFFFFFF) == 87);
+    REQUIRE(hash_table_metadata::take_fingerprint(0xFFFFFFFFFFFFFFFF) == 127);
 }
 
 TEST_CASE("hash_map construction") {
@@ -60,6 +60,19 @@ TEST_CASE("hash_map basic usage") {
     }
 
     hm.remove(0);
+}
+
+TEST_CASE("hash_set basic usage") {
+    fixed::hash_set<u32, 16> hs;
+
+    constexpr u32 insert_count{10};
+    for (u32 i = 0; i < insert_count; ++i) { hs.emplace(i); }
+    CHECK(hs.size() == insert_count);
+
+    for (u32 i = 0; i < insert_count; ++i) { CHECK(hs.contains(i)); }
+
+    hs.remove(0);
+    CHECK_FALSE(hs.contains(0));
 }
 
 TEST_CASE("hash_map helper constructor & clear") {
@@ -138,9 +151,42 @@ TEST_CASE("hash_map transparent usage") {
     CHECK(hm.contains("hi"));
 }
 
+TEST_CASE("hash_map emplace api") {
+    fixed::hash_map<u32, u32, 20> hm;
+
+    // Happy path emplacement
+    {
+        auto try_result = hm.try_emplace(0, 1);
+        CHECK(try_result.inserted);
+        CHECK(try_result.it->first == 0);
+        CHECK(try_result.it->second == 1);
+
+        auto result = hm.emplace(1, 2);
+        CHECK(result.inserted);
+        CHECK(result.it->first == 1);
+        CHECK(result.it->second == 2);
+    }
+
+    // try_emplace doesn't overwrite data
+    {
+        auto try_result = hm.try_emplace(0, 1);
+        CHECK_FALSE(try_result.inserted);
+        CHECK(try_result.it->first == 0);
+        CHECK(try_result.it->second == 1);
+    }
+
+    // Emplace overwrites data
+    {
+        auto result = hm.emplace(0, 7);
+        CHECK(result.inserted);
+        CHECK(result.it->first == 0);
+        CHECK(result.it->second == 7);
+    }
+}
+
 using tracker = helpers::raii_tracker;
 
-TEST_CASE("hash_map destructor correctness") {
+TEST_CASE("hash_table destructor correctness") {
     tracker::reset();
     {
         fixed::hash_map<i32, tracker, 5> hm;
@@ -150,7 +196,7 @@ TEST_CASE("hash_map destructor correctness") {
     CHECK(tracker::destruct_count == 2);
 }
 
-TEST_CASE("hash_map copy correctness") {
+TEST_CASE("hash_table copy correctness") {
     using hash_map = fixed::hash_map<i32, tracker, 3>;
     tracker::reset();
     {
@@ -179,7 +225,7 @@ TEST_CASE("hash_map copy correctness") {
     CHECK(tracker::live_count == 0);
 }
 
-TEST_CASE("hash_map move correctness") {
+TEST_CASE("hash_table move correctness") {
     using hash_map = fixed::hash_map<i32, tracker, 78>;
     tracker::reset();
     {
@@ -196,7 +242,7 @@ TEST_CASE("hash_map move correctness") {
     CHECK(tracker::live_count == 0);
 }
 
-TEST_CASE("hash_map self assignment") {
+TEST_CASE("hash_table self assignment") {
     tracker::reset();
     fixed::hash_map<i32, tracker, 3> hm;
     hm.emplace(0, 0);
@@ -249,6 +295,22 @@ TEST_CASE("hash_map const iterator") {
         iter_count++;
     }
     CHECK(iter_count == hm.size());
+}
+
+TEST_CASE("hash_set non-const iterator") {
+    auto hs{fixed::make_hash_set(0, 1, 2)};
+
+    usize iter_count{0};
+    for (auto _ : hs) { iter_count++; }
+    CHECK(iter_count == hs.size());
+}
+
+TEST_CASE("hash_set const iterator") {
+    constexpr auto hs{fixed::make_hash_set(0, 1, 2)};
+
+    usize iter_count{0};
+    for (auto _ : hs) { iter_count++; }
+    CHECK(iter_count == hs.size());
 }
 
 TEST_CASE("hash_map ranges compatibility") {
