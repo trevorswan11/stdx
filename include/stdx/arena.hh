@@ -14,12 +14,13 @@
 
 namespace stdx {
 
-// Do not free returned memory directly!
-template <usize BlockSize = [] -> usize {
+constexpr auto DEFAULT_ARENA_BLOCK_SIZE{[] -> usize {
     using namespace size_literals;
-    return 64_KiB;
-}()>
-class arena {
+    return static_cast<usize>(64_KiB);
+}()};
+
+// Do not free returned memory directly!
+template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE> class arena {
   public:
     arena() noexcept = default;
     ~arena() { clear(); }

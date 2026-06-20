@@ -46,7 +46,7 @@ constinit std::mutex                                   mutex;
 
 class buffer {
   public:
-    static constexpr usize BUF_SIZE{64_KiB};
+    static constexpr usize BUF_SIZE{static_cast<usize>(64_KiB)};
 
   public:
     constexpr buffer() = default;
@@ -73,7 +73,7 @@ class buffer {
 struct buffer_manager {
   public:
     static constexpr usize HEADROOM{buffer::BUF_SIZE / 2};
-    static constexpr usize MAX_BUFFERS{1_KiB};
+    static constexpr usize MAX_BUFFERS{static_cast<usize>(1_KiB)};
     static inline constinit fixed::vector<option<buffer&>, MAX_BUFFERS> buffers;
 
   public:

@@ -17,8 +17,8 @@ constexpr usize MARKER{42};
 
 using namespace size_literals;
 struct large {
-    usize                  marker{MARKER};
-    std::array<i32, 4_KiB> _;
+    usize                                      marker{MARKER};
+    std::array<i32, static_cast<usize>(4_KiB)> _;
 };
 
 struct beefy {
@@ -63,8 +63,8 @@ TEST_CASE("Arena alignment") {
 
 TEST_CASE("Arena array construction") {
     using namespace size_literals;
-    arena<32_KiB> a;
-    const auto    array{a.make_span<i32>(10)};
+    arena<static_cast<usize>(32_KiB)> a;
+    const auto                        array{a.make_span<i32>(10)};
     for (const auto& i : array) { CHECK(i == 0); }
 }
 
