@@ -5,8 +5,19 @@
 #include <utility>
 
 #include "stdx/assert.hh"
+#include "stdx/types.hh"
 
 namespace stdx {
+
+namespace size_literals {
+
+constexpr auto operator""_KiB(usize x) noexcept -> usize { return 1'024UZ * x; }
+constexpr auto operator""_MiB(usize x) noexcept -> usize { return 1'024_KiB * x; }
+constexpr auto operator""_GiB(usize x) noexcept -> usize { return 1'024_MiB * x; }
+constexpr auto operator""_TiB(usize x) noexcept -> usize { return 1'024_GiB * x; }
+constexpr auto operator""_PiB(usize x) noexcept -> usize { return 1'024_TiB * x; }
+
+} // namespace size_literals
 
 // cppcheck-suppress-begin noExplicitConstructor
 

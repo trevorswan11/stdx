@@ -27,6 +27,7 @@
 namespace stdx {
 
 namespace chrono = std::chrono;
+using namespace size_literals;
 
 namespace {
 
@@ -45,7 +46,7 @@ constinit std::mutex                                   mutex;
 
 class buffer {
   public:
-    static constexpr usize BUF_SIZE{64UZ * 1'024UZ};
+    static constexpr usize BUF_SIZE{64_KiB};
 
   public:
     constexpr buffer() = default;
@@ -72,7 +73,7 @@ class buffer {
 struct buffer_manager {
   public:
     static constexpr usize HEADROOM{buffer::BUF_SIZE / 2};
-    static constexpr usize MAX_BUFFERS{1'024UZ};
+    static constexpr usize MAX_BUFFERS{1_KiB};
     static inline constinit fixed::vector<option<buffer&>, MAX_BUFFERS> buffers;
 
   public:
