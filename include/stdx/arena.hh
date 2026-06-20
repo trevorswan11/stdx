@@ -29,13 +29,10 @@ template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE> class arena {
     auto operator=(const arena&) -> arena& = delete;
     arena(arena&& other) noexcept
         : block_offset_{other.block_offset_}, block_head_{other.block_head_},
-          block_current_{other.block_current_}, cleanup_current_{other.cleanup_current_},
-          cleanup_head_{other.cleanup_head_} {
-        other.block_offset_    = 0;
-        other.block_head_      = nullptr;
-        other.block_current_   = nullptr;
-        other.cleanup_head_    = nullptr;
-        other.cleanup_current_ = nullptr;
+          block_current_{other.block_current_}, cleanup_head_{other.cleanup_head_} {
+        other.block_offset_ = 0;
+        other.block_head_   = nullptr;
+        other.cleanup_head_ = nullptr;
     }
     auto operator=(arena&&) -> arena& = delete;
 
@@ -60,9 +57,8 @@ template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE> class arena {
         if (count == 0) { return {}; }
 
         const auto size{sizeof(T) * count};
-        ASSERT(size + alignof(T) - 1 <= BlockSize, "Block size cannot fit requested type count");
-        void* mem{alloc(size, alignof(T))};
-        auto* data{static_cast<T*>(mem)};
+        void*      mem{alloc(size, alignof(T))};
+        auto*      data{static_cast<T*>(mem)};
         for (usize i{0}; i < count; ++i) { new (static_cast<void*>(data + i)) T{}; }
 
         if constexpr (!TriviallyDestructible<T>) {
@@ -141,29 +137,24 @@ template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE> class arena {
         auto* node{new (node_mem) cleanup_node{
             .destructor = destructor,
             .data       = data,
-            .next       = nullptr,
+            .next       = cleanup_head_,
         }};
-
-        if (cleanup_current_) {
-            cleanup_current_->next = node;
-        } else {
-            cleanup_head_ = node;
-        }
-        cleanup_current_ = node;
+        cleanup_head_ = node;
     }
 
     auto run_destructors() noexcept -> void {
-        cleanup_node* current_cleanup{cleanup_head_};
-        while (current_cleanup) {
-            current_cleanup->destructor(current_cleanup->data);
-            current_cleanup = current_cleanup->next;
+        cleanup_node* cleanup{cleanup_head_};
+        while (cleanup) {
+            cleanup->destructor(cleanup->data);
+            cleanup = cleanup->next;
         }
-        cleanup_head_    = nullptr;
-        cleanup_current_ = nullptr;
+        cleanup_head_ = nullptr;
     }
 
     [[nodiscard]] auto alloc(usize size, usize align) -> void* {
         PROFILE_FUNCTION();
+        ASSERT(size + (align - 1) <= BlockSize, "Allocation exceeds max block size");
+
         if (block_current_) {
             auto        raw_addr{reinterpret_cast<uptr>(block_current_ + 1)};
             uptr        current_ptr{raw_addr + block_offset_};
@@ -191,7 +182,6 @@ template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE> class arena {
     block*        block_head_{nullptr};
     block*        block_current_{nullptr};
     cleanup_node* cleanup_head_{nullptr};
-    cleanup_node* cleanup_current_{nullptr};
 };
 
 } // namespace stdx
