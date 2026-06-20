@@ -7,3 +7,8 @@
 - Change naming conventions to use snake_case like the C++ standard library does already
 - Add rehash support to `fixed::hash_map`
 - Make transparent hashing more robust in the `fixed::hash_map` implementation
+
+# v1.2.0
+- Add non-trivial type support to arena allocator
+    - Implemented with a linked list of destructors if one is needed
+- Add operator literals for memory sizes in `size_literals` namespace

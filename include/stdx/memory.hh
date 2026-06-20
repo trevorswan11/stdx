@@ -9,6 +9,7 @@
 
 namespace stdx {
 
+// https://wunkolo.github.io/post/2022/02/memory-size-literals/
 namespace size_literals {
 
 constexpr auto operator""_KiB(unsigned long long int x) noexcept -> u64 { return 1'024ULL * x; }
