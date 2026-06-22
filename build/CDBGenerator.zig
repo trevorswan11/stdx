@@ -36,6 +36,13 @@ pub fn getCdbPath(self: *const Self) std.Build.LazyPath {
     return .{ .generated = .{ .file = &self.output_file } };
 }
 
+pub fn addCdbFlags(b: *std.Build, flags: *std.ArrayList([]const u8)) void {
+    flags.appendSlice(b.allocator, &.{
+        "-gen-cdb-fragment-path",
+        b.cache_root.join(b.allocator, &.{cdb_frags_dirname}) catch @panic("OOM"),
+    }) catch @panic("OOM");
+}
+
 fn generateCdb(step: *std.Build.Step, _: std.Build.Step.MakeOptions) !void {
     const self: *Self = @fieldParentPtr("step", step);
 

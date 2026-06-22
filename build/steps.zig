@@ -5,6 +5,7 @@ const utils = @import("utils.zig");
 const CDBGenerator = @import("CDBGenerator.zig");
 const RemoveDir = @import("RemoveDir.zig");
 const CoverageParser = @import("CoverageParser.zig");
+const LOCCounter = @import("LOCCounter.zig");
 
 pub const FmtPaths = struct {
     zig: []const []const u8,
@@ -117,6 +118,13 @@ pub fn addCppcheck(b: *std.Build, config: StaticAnalysisConfig) *std.Build.Step 
     check_step.dependOn(&cppcheck_cache_install.step);
     check_step.dependOn(&cppcheck_run.step);
     return check_step;
+}
+
+pub fn addClocStep(b: *std.Build, counted_files: []const []const u8) *std.Build.Step {
+    const cloc: *LOCCounter = .init(b, counted_files);
+    const cloc_step = b.step("cloc", "Count lines of code across the project");
+    cloc_step.dependOn(&cloc.step);
+    return cloc_step;
 }
 
 pub const RunKcovConfig = struct {

@@ -19,3 +19,6 @@
 
 # v1.3.1
 - Fix an issue where the package compressor could not handle directories
+
+# v1.3.2
+- Add some more utilities to the utility steps
