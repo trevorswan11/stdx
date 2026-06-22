@@ -137,7 +137,7 @@ pub fn addArchives(
         const packer = b.addRunArtifact(self.compressor);
         packer.addArg(@tagName(archive));
         const out_path = packer.addOutputFileArg(out_name);
-        packer.addDirectoryArg(config.staging.getDirectory().path(b, config.output_dir_basename));
+        packer.addDirectoryArg(staging.getDirectory().path(b, config.output_dir_basename));
         self.step.dependOn(&packer.step);
 
         const copy = b.addInstallFileWithDir(
