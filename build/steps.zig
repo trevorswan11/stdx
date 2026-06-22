@@ -120,13 +120,6 @@ pub fn addCppcheck(b: *std.Build, config: StaticAnalysisConfig) *std.Build.Step 
     return check_step;
 }
 
-pub fn addClocStep(b: *std.Build, counted_files: []const []const u8) *std.Build.Step {
-    const cloc: *LOCCounter = .init(b, counted_files);
-    const cloc_step = b.step("cloc", "Count lines of code across the project");
-    cloc_step.dependOn(&cloc.step);
-    return cloc_step;
-}
-
 pub const RunKcovConfig = struct {
     include_patterns: ?[]const []const u8 = null,
     exclude_patterns: ?[]const []const u8 = null,

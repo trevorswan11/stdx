@@ -7,6 +7,8 @@ pub const RemoveDir = @import("build/RemoveDir.zig");
 pub const LOCCounter = @import("build/LOCCounter.zig");
 pub const CoverageParser = @import("build/CoverageParser.zig");
 pub const Packager = @import("build/Packager.zig");
+const array_list = @import("build/array_list.zig");
+pub const ArrayList = array_list.ArrayList;
 const ProjectPaths = @import("build/ProjectPaths.zig");
 
 pub const Dependency = @import("third-party/Dependency.zig");
@@ -38,11 +40,7 @@ pub fn build(b: *std.Build) !void {
 
     const profile = b.option(bool, "profile", "Enable chromium tracing") orelse false;
     if (profile) try compiler_flags.append(b.allocator, builders.stdx_profile_define);
-
-    if (run_cdb_gen) try compiler_flags.appendSlice(b.allocator, &.{
-        "-gen-cdb-fragment-path",
-        b.cache_root.join(b.allocator, &.{CDBGenerator.cdb_frags_dirname}) catch @panic("OOM"),
-    });
+    if (run_cdb_gen) CDBGenerator.addCdbFlags(b, &compiler_flags);
 
     switch (optimize) {
         .Debug => try compiler_flags.appendSlice(b.allocator, &.{ "-g", "-DSTDX_DEBUG" }),
@@ -287,8 +285,13 @@ fn addArtifacts(b: *std.Build, config: struct {
     const stdx_tests = builders.strappedTest(b, .{
         .target = config.target,
         .optimize = config.optimize,
-        .libstdx = libstdx,
-        .libcatch2 = catch2_dep.?.artifact,
+        .stdx = .{
+            .internal = .{
+                .stdx_builder = b,
+                .libstdx = libstdx,
+                .libcatch2 = catch2_dep.?.artifact,
+            },
+        },
         .cxx_files = try utils.collectFiles(b, ProjectPaths.tests, .{}),
         .cxx_flags = config.cxx_flags,
         .profile = config.profile,
@@ -328,10 +331,6 @@ fn addTooling(b: *std.Build, config: struct {
     }) catch {};
 
     if (config.cdb_gen) |cdb_gen| {
-        const cdb_step = b.step("cdb", "Generate " ++ CDBGenerator.cdb_filename);
-        cdb_step.dependOn(&cdb_gen.step);
-        b.getInstallStep().dependOn(&cdb_gen.step);
-
         if (config.cppcheck) |cppcheck_art| {
             const check_step = steps.addCppcheck(b, .{
                 .cppcheck = cppcheck_art,
@@ -350,9 +349,7 @@ fn addTooling(b: *std.Build, config: struct {
         try utils.collectFiles(b, "include", .{ .allowed_extensions = &counted_extensions }),
         try utils.collectFiles(b, "src", .{ .allowed_extensions = &counted_extensions }),
         try utils.collectFiles(b, "tests", .{ .allowed_extensions = &counted_extensions }),
+        try utils.collectFiles(b, "tools", .{ .allowed_extensions = &counted_extensions }),
     });
-
-    const cloc: *LOCCounter = .init(b, counted_files);
-    const cloc_step = b.step("cloc", "Count lines of code across the project");
-    cloc_step.dependOn(&cloc.step);
+    _ = LOCCounter.init(b, counted_files);
 }

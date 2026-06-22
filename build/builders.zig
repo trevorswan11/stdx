@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const ProjectPaths = @import("ProjectPaths.zig");
+const ArrayList = @import("array_list.zig").ArrayList;
 
 const utils = @import("utils.zig");
 const catch2 = @import("../third-party/catch2.zig");
@@ -8,11 +9,38 @@ const libarchive = @import("../third-party/libarchive.zig");
 
 pub const stdx_profile_define = "-DSTDX_PROFILE";
 
-pub const BuildStrappedTestConfig = struct {
+pub const BuildHarnessTestConfig = struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
-    libstdx: *std.Build.Step.Compile,
-    libcatch2: *std.Build.Step.Compile,
+    stdx: union(enum) {
+        dep: *std.Build.Dependency,
+        internal: struct {
+            stdx_builder: *std.Build,
+            libstdx: *std.Build.Step.Compile,
+            libcatch2: *std.Build.Step.Compile,
+        },
+
+        pub fn getLibstdx(self: @This()) *std.Build.Step.Compile {
+            return switch (self) {
+                .dep => |d| d.artifact("stdx"),
+                .internal => |i| i.libstdx,
+            };
+        }
+
+        pub fn getLibcatch2(self: @This()) *std.Build.Step.Compile {
+            return switch (self) {
+                .dep => |d| d.artifact("catch2"),
+                .internal => |i| i.libcatch2,
+            };
+        }
+
+        pub fn getStdxBuilder(self: @This()) *std.Build {
+            return switch (self) {
+                .dep => |d| d.builder,
+                .internal => |i| i.stdx_builder,
+            };
+        }
+    },
     /// The test hook is added automatically
     cxx_files: []const []const u8,
     cxx_flags: []const []const u8,
@@ -23,23 +51,19 @@ pub const BuildStrappedTestConfig = struct {
     config_headers: []const *std.Build.Step.ConfigHeader = &.{},
     system_include_paths: []const std.Build.LazyPath = &.{},
     executable_config: utils.CreateExecutableConfig,
-    /// The builder who has stdx as a dependency, defaulting to `b`
-    asking_builder: ?*std.Build = null,
 };
 
 /// Build's a zig-harness-driven catch2 test artifact
-///
-/// Call this with stdx's builder
-pub fn strappedTest(b: *std.Build, config: BuildStrappedTestConfig) *std.Build.Step.Compile {
-    const link_libraries = std.mem.concat(b.allocator, *std.Build.Step.Compile, &.{
-        config.link_libraries,
-        &.{ config.libstdx, config.libcatch2 },
-    }) catch @panic("OOM");
+pub fn strappedTest(b: *std.Build, config: BuildHarnessTestConfig) *std.Build.Step.Compile {
+    var link_libraries: ArrayList(*std.Build.Step.Compile) = .fromSlice(b, config.link_libraries);
+    link_libraries.appendSlice(&.{ config.stdx.getLibstdx(), config.stdx.getLibcatch2() });
 
-    const test_exe = utils.createExecutable(config.asking_builder orelse b, .{
+    const stdx_builder = config.stdx.getStdxBuilder();
+    const harness_path = stdx_builder.path(ProjectPaths.harness);
+    const test_exe = utils.createExecutable(b, .{
         .target = config.target,
         .optimize = config.optimize,
-        .zig_main = b.path(ProjectPaths.harness ++ "main.zig"),
+        .zig_main = harness_path.path(stdx_builder, "main.zig"),
         .include_paths = config.include_paths,
         .config_headers = config.config_headers,
         .system_include_paths = config.system_include_paths,
@@ -47,11 +71,12 @@ pub fn strappedTest(b: *std.Build, config: BuildStrappedTestConfig) *std.Build.S
             .files = config.cxx_files,
             .flags = config.cxx_flags,
         },
-        .link_libraries = link_libraries,
+        .link_libraries = link_libraries.items(),
     }, config.executable_config);
 
-    test_exe.root_module.addCSourceFile(.{
-        .file = b.path(ProjectPaths.harness ++ "runner.cc"),
+    test_exe.root_module.addCSourceFiles(.{
+        .root = harness_path,
+        .files = &.{ "runner.cc", "allocator.cc", "listener.cc" },
         .flags = config.cxx_flags,
     });
 

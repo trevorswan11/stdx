@@ -62,9 +62,11 @@ const Self = @This();
 
 step: std.Build.Step,
 counted_files: []const []const u8,
+cloc_step: *std.Build.Step,
 
 pub fn init(b: *std.Build, counted_files: []const []const u8) *Self {
     const self = b.allocator.create(Self) catch @panic("OOM");
+    const cloc_step = b.step("cloc", "Count lines of code across the project");
     self.* = .{
         .step = .init(.{
             .id = .custom,
@@ -73,7 +75,10 @@ pub fn init(b: *std.Build, counted_files: []const []const u8) *Self {
             .makeFn = count,
         }),
         .counted_files = counted_files,
+        .cloc_step = cloc_step,
     };
+
+    cloc_step.dependOn(&self.step);
     return self;
 }
 

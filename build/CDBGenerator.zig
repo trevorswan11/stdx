@@ -17,9 +17,11 @@ const Self = @This();
 
 step: std.Build.Step,
 output_file: std.Build.GeneratedFile,
+cdb_step: *std.Build.Step,
 
 pub fn init(b: *std.Build) *Self {
     const self = b.allocator.create(Self) catch @panic("OOM");
+    const cdb_step = b.step("cdb", "Generate " ++ cdb_filename);
     self.* = .{
         .step = .init(.{
             .id = .custom,
@@ -28,7 +30,11 @@ pub fn init(b: *std.Build) *Self {
             .makeFn = generateCdb,
         }),
         .output_file = .{ .step = &self.step },
+        .cdb_step = cdb_step,
     };
+
+    self.cdb_step.dependOn(&self.step);
+    b.getInstallStep().dependOn(&self.step);
     return self;
 }
 

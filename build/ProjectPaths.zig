@@ -8,7 +8,9 @@ pub const src = "src/";
 pub const tests = "tests/";
 pub const tools = "tools/";
 pub const harness = tools ++ "harness/";
+pub const fuzzer = tools ++ "fuzzer/";
 pub const compressor = tools ++ "compressor/";
+pub const fuzz = "fuzz/";
 pub const build = "build/";
 
 pub fn collectToolingPaths(b: *std.Build) !steps.FmtPaths {
