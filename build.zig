@@ -13,6 +13,7 @@ const ProjectPaths = @import("build/ProjectPaths.zig");
 
 pub const Dependency = @import("third-party/Dependency.zig");
 pub const KcovBuilder = @import("third-party/kcov/KcovBuilder.zig");
+pub const GTestBuilder = @import("third-party/fuzztest/GTestBuilder.zig");
 
 pub const utils = @import("build/utils.zig");
 pub const builders = @import("build/builders.zig");
@@ -23,6 +24,7 @@ pub const catch2 = @import("third-party/catch2.zig");
 pub const zlib = @import("third-party/zlib.zig");
 pub const zstd = @import("third-party/zstd.zig");
 pub const libarchive = @import("third-party/libarchive.zig");
+pub const antlr4 = @import("third-party/fuzztest/antlr4.zig");
 
 pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
@@ -120,6 +122,22 @@ pub fn build(b: *std.Build) !void {
             },
         });
     }
+
+    const config: Dependency.Config = .{
+        .target = target,
+        .optimize = optimize,
+    };
+
+    const gtest_builder = GTestBuilder.build(b, config);
+    if (gtest_builder) |gtest| {
+        b.installArtifact(gtest.gtest);
+        b.installArtifact(gtest.gtest_main);
+        b.installArtifact(gtest.gmock);
+    }
+
+    if (antlr4.build(b, config)) |antlr| {
+        b.installArtifact(antlr.artifact);
+    }
 }
 
 const TestArtifacts = struct {
@@ -184,10 +202,12 @@ fn buildStdx(b: *std.Build, config: struct {
     const gsl = b.dependency("gsl", .{});
     const gsl_inc = gsl.path("include");
 
+    const nlohmann_json = b.dependency("nlohmann_json", .{});
+    const nlohmann_json_inc = nlohmann_json.path("single_include");
+
     const system_includes = [_]std.Build.LazyPath{
-        magic_enum_inc,
-        unordered_dense_inc,
-        gsl_inc,
+        magic_enum_inc, unordered_dense_inc,
+        gsl_inc,        nlohmann_json_inc,
     };
 
     const fmt_dep = fmt.build(b, .{
