@@ -55,7 +55,7 @@ pub fn main(init: std.process.Init) !void {
     const output_buf = file_reader_buf[buf_size / 2 ..];
 
     while (try walker.next(io)) |entry| {
-        if (entry.kind != .file) continue;
+        if (entry.kind != .file and entry.kind != .directory) continue;
         const archive_entry = c.archive_entry_new() orelse return error.EntryNewFailed;
         defer c.archive_entry_free(archive_entry);
 
@@ -65,12 +65,23 @@ pub fn main(init: std.process.Init) !void {
 
         // File stats for the header
         const stat = try entry.dir.statFile(io, entry.basename, .{});
-        c.archive_entry_set_size(archive_entry, @intCast(stat.size));
         c.archive_entry_set_mtime(archive_entry, @intCast(@divTrunc(stat.mtime.nanoseconds, std.time.ns_per_s)), 0);
-
-        // https://github.com/libarchive/libarchive/blob/master/libarchive/archive_entry.h#L216
-        c.archive_entry_set_filetype(archive_entry, 0o100000);
         c.archive_entry_set_perm(archive_entry, @intCast(@intFromEnum(stat.permissions)));
+
+        if (entry.kind == .directory) {
+            c.archive_entry_set_size(archive_entry, 0);
+            c.archive_entry_set_filetype(archive_entry, 0o040000);
+
+            // Nested items in the directory are handled naturally by the walker
+            if (c.archive_write_header(archive, archive_entry) != c.ARCHIVE_OK) {
+                try stderr.print("Header error: {s}\n", .{c.archive_error_string(archive)});
+                try stderr.flush();
+            }
+            continue;
+        } else {
+            c.archive_entry_set_size(archive_entry, @intCast(stat.size));
+            c.archive_entry_set_filetype(archive_entry, 0o100000);
+        }
 
         if (c.archive_write_header(archive, archive_entry) != c.ARCHIVE_OK) {
             try stderr.print("Header error: {s}\n", .{c.archive_error_string(archive)});

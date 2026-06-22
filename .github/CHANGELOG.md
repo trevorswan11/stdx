@@ -12,3 +12,10 @@
 - Add non-trivial type support to arena allocator
     - Implemented with a linked list of destructors if one is needed
 - Add operator literals for memory sizes in `size_literals` namespace
+
+# v1.3.0
+- Add set implementation to fixed hash containers
+    - Renamed `fixed/hash_map` to `fixed/hash_table`
+
+# v1.3.1
+- Fix an issue where the package compressor could not handle directories
