@@ -40,29 +40,34 @@
             .url = "https://github.com/libarchive/libarchive/archive/refs/tags/v3.8.5.tar.gz",
             .hash = "N-V-__8AABtbCwHDmVvgXlm5f-07LtFZjUQNvvJrBnG-HeqN",
         },
+        .nlohmann_json = .{
+            .url = "https://github.com/nlohmann/json/archive/refs/tags/v3.12.0.tar.gz",
+            .hash = "N-V-__8AANqC8wBtv10C_41rBAgWfTMpQow7tzRi4h6LQYxm",
+        },
         .fuzztest = .{
             .url = "https://github.com/google/fuzztest/archive/refs/tags/2026-02-19.tar.gz",
             .hash = "N-V-__8AAAOGPQAIRRMOhOxA3wZyCyfphEdrp91WLkHHzWZf",
+            .lazy = true,
         },
         .abseil = .{
             .url = "https://github.com/abseil/abseil-cpp/archive/refs/tags/20260107.1.tar.gz",
             .hash = "N-V-__8AAHvBpQC2PgAgIxqg7-WRzv6zAW3ItECY_C63R_Nn",
+            .lazy = true,
         },
         .re2 = .{
             .url = "https://github.com/google/re2/archive/refs/tags/2025-11-05.tar.gz",
             .hash = "N-V-__8AADh_GQCXgElXgN0nNsUTPyvRCYHP5ZgNg3zFAl2e",
+            .lazy = true,
         },
         .googletest = .{
             .url = "https://github.com/google/googletest/archive/refs/tags/v1.17.0.tar.gz",
             .hash = "N-V-__8AAEV8PgDOBc81AuVJQ9XhGo46f-4dlQ7sXar_M0_i",
+            .lazy = true,
         },
         .antlr4 = .{
             .url = "https://www.antlr.org/download/antlr4-cpp-runtime-4.13.2-source.zip",
             .hash = "N-V-__8AALuHfwASMNqkpsLkYifiwBh87SpEKW9IcNpZ4bJq",
-        },
-        .nlohmann_json = .{
-            .url = "https://github.com/nlohmann/json/archive/refs/tags/v3.12.0.tar.gz",
-            .hash = "N-V-__8AANqC8wBtv10C_41rBAgWfTMpQow7tzRi4h6LQYxm",
+            .lazy = true,
         },
         .kcov = .{
             .url = "https://github.com/SimonKagstrom/kcov/archive/refs/tags/v43.tar.gz",
