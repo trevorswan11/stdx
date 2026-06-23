@@ -29,7 +29,8 @@ pub fn collectToolingPaths(b: *std.Build) !steps.FmtPaths {
     try utils.collectFilesInto(b, include, .{ .allowed_extensions = &.{".hh"} }, &cxx_paths);
     try utils.collectFilesInto(b, src, .{ .allowed_extensions = &.{".cc"} }, &cxx_paths);
     try utils.collectFilesInto(b, tests, .{ .allowed_extensions = &.{ ".hh", ".cc" } }, &cxx_paths);
-    try utils.collectFilesInto(b, tools, .{ .allowed_extensions = &.{ ".hh", ".cc", ".h" } }, &cxx_paths);
+    try utils.collectFilesInto(b, fuzz_tests, .{ .allowed_extensions = &.{ ".hh", ".cc" } }, &cxx_paths);
+    try utils.collectFilesInto(b, tools, .{ .allowed_extensions = &.{ ".hh", ".cc" } }, &cxx_paths);
 
     return .{ .zig = zig_paths.items(), .cxx = cxx_paths.items() };
 }

@@ -451,8 +451,9 @@ fn addTooling(b: *std.Build, config: struct {
     cdb_gen: ?*CDBGenerator,
     cppcheck: ?*std.Build.Step.Compile,
 }) !void {
+    const paths = try ProjectPaths.collectToolingPaths(b);
     _ = steps.addFmt(b, .{
-        .paths = try ProjectPaths.collectToolingPaths(b),
+        .paths = paths,
         .formatter = .{ .version = "21.1.8" },
     }) catch {};
 
@@ -466,15 +467,8 @@ fn addTooling(b: *std.Build, config: struct {
         }
     }
 
-    const counted_extensions = [_][]const u8{ ".cc", ".hh", ".zig" };
     var counted_files: ArrayList([]const u8) = .init(b);
-    try utils.collectFilesInto(b, "build", .{
-        .allowed_extensions = &counted_extensions,
-        .extra_files = &.{"build.zig"},
-    }, &counted_files);
-    try utils.collectFilesInto(b, "include", .{ .allowed_extensions = &counted_extensions }, &counted_files);
-    try utils.collectFilesInto(b, "src", .{ .allowed_extensions = &counted_extensions }, &counted_files);
-    try utils.collectFilesInto(b, "tests", .{ .allowed_extensions = &counted_extensions }, &counted_files);
-    try utils.collectFilesInto(b, "tools", .{ .allowed_extensions = &counted_extensions }, &counted_files);
+    counted_files.appendSlice(paths.zig);
+    counted_files.appendSlice(paths.cxx);
     _ = LOCCounter.init(b, counted_files.items());
 }
