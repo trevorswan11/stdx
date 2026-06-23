@@ -8,25 +8,46 @@ var instrumentor: Instrumentor = undefined;
 var instrumentor_active = false;
 var launch_result: u8 = 0;
 
+// When true, atexitReport bases the leak verdict on test_leaked
 var per_test_detection_used = false;
+
 threadlocal var test_start_nodes: u64 = 0;
+threadlocal var test_start_bytes: u64 = 0;
 var test_leaked: std.atomic.Value(bool) = .init(false);
+
+// Accumulate only the deltas that came from instrumented test windows
+var test_leaked_nodes: std.atomic.Value(u64) = .init(0);
+var test_leaked_bytes: std.atomic.Value(u64) = .init(0);
 
 export fn harness_begin_test() callconv(.c) void {
     per_test_detection_used = true;
     test_start_nodes = instrumentor.node_counter.load(.acquire);
+    test_start_bytes = instrumentor.byte_counter.load(.acquire);
 }
 
 export fn harness_end_test(test_name: [*:0]const u8) callconv(.c) void {
-    const current = instrumentor.node_counter.load(.acquire);
-    if (current > test_start_nodes) {
+    const current_nodes = instrumentor.node_counter.load(.acquire);
+    if (current_nodes > test_start_nodes) {
+        const leaked_nodes = current_nodes - test_start_nodes;
+        const current_bytes = instrumentor.byte_counter.load(.acquire);
+        const leaked_bytes = if (current_bytes > test_start_bytes) current_bytes - test_start_bytes else 0;
+        _ = test_leaked_nodes.fetchAdd(leaked_nodes, .acq_rel);
+        _ = test_leaked_bytes.fetchAdd(leaked_bytes, .acq_rel);
         test_leaked.store(true, .seq_cst);
-        std.log.warn("LEAK: {d} allocation(s) not freed by test '{s}'", .{ current - test_start_nodes, test_name });
+        std.log.warn("LEAK: {d} allocation(s) not freed by test '{s}'", .{ leaked_nodes, test_name });
     }
 }
 
 fn atexitReport() callconv(.c) void {
-    instrumentor.report();
+    if (per_test_detection_used) {
+        // Report only allocations that leaked within test windows
+        instrumentor.reportOverride(
+            test_leaked_nodes.load(.acquire),
+            test_leaked_bytes.load(.acquire),
+        );
+    } else {
+        instrumentor.report();
+    }
     const per_test_leak = test_leaked.load(.acquire);
     const process_leak = !per_test_detection_used and instrumentor.node_counter.load(.acquire) > 0;
     const leak_bit: u8 = @intFromBool(per_test_leak or process_leak);
@@ -221,8 +242,15 @@ const Instrumentor = struct {
     }
 
     pub fn report(self: *Instrumentor) void {
+        self.reportOverride(
+            self.node_counter.load(.acquire),
+            self.byte_counter.load(.acquire),
+        );
+    }
+
+    pub fn reportOverride(self: *Instrumentor, leaked_nodes: u64, leaked_bytes: u64) void {
         const allocated, const alloc_unit = formatBytes(self.total_alloc.load(.acquire));
-        const remaining, const rem_unit = formatBytes(self.byte_counter.load(.acquire));
+        const remaining, const rem_unit = formatBytes(leaked_bytes);
 
         std.log.info("{d} nodes malloced for {d:.3} {s}", .{
             self.total_nodes.load(.acquire),
@@ -230,7 +258,7 @@ const Instrumentor = struct {
             alloc_unit,
         });
         std.log.info("{d} leak(s) for {d:.3} total leaked {s}\n", .{
-            self.node_counter.load(.acquire),
+            leaked_nodes,
             remaining,
             rem_unit,
         });

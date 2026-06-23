@@ -32,7 +32,7 @@ struct beefy {
 TEST_CASE("Arena pointer stability") {
     arena               a;
     std::vector<large*> foos;
-    new int;
+
     // First use
     {
         for (usize i{0}; i < 100; ++i) { foos.emplace_back(a.make<large>().get()); }
