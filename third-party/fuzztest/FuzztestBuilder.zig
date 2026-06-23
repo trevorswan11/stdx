@@ -53,6 +53,7 @@ fn buildCore(
 ) Artifact {
     const b = self.b;
     const mod = self.addModule(&fuzztest_mod.sources);
+    mod.addIncludePath(re2.upstream.path(""));
 
     mod.linkLibrary(absl.synchronization.synchronization);
     mod.linkLibrary(absl.strings.cord);
@@ -101,7 +102,7 @@ fn addModule(self: *const Self, sources: []const []const u8) *std.Build.Module {
     mod.addCSourceFiles(.{
         .root = self.metadata.root,
         .files = sources,
-        .flags = &.{"-std=c++17"},
+        .flags = &.{ "-std=c++17", "-DCENTIPEDE_DISABLE_RIEGELI" },
     });
     Dependency.addFrameworkSearchPaths(mod, self.metadata.config.target);
     return mod;
