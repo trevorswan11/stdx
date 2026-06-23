@@ -15,6 +15,7 @@ pub const Dependency = @import("third-party/Dependency.zig");
 pub const KcovBuilder = @import("third-party/kcov/KcovBuilder.zig");
 pub const GTestBuilder = @import("third-party/fuzztest/GTestBuilder.zig");
 pub const AbseilBuilder = @import("third-party/abseil/AbseilBuilder.zig");
+pub const FuzztestBuilder = @import("third-party/fuzztest/FuzztestBuilder.zig");
 
 pub const utils = @import("build/utils.zig");
 pub const builders = @import("build/builders.zig");
@@ -131,7 +132,8 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     };
 
-    if (GTestBuilder.build(b, config)) |gtest| {
+    const gtest_dep = GTestBuilder.build(b, config);
+    if (gtest_dep) |gtest| {
         b.installArtifact(gtest.gtest);
         b.installArtifact(gtest.gtest_main);
         b.installArtifact(gtest.gmock);
@@ -158,6 +160,14 @@ pub fn build(b: *std.Build) !void {
 
         if (re2.build(b, abseil)) |re| {
             b.installArtifact(re.artifact);
+
+            if (gtest_dep) |gtest| {
+                if (target.result.os.tag != .windows) {
+                    if (FuzztestBuilder.build(b, abseil, gtest, re)) |fuzztest| {
+                        b.installArtifact(fuzztest.fuzztest);
+                    }
+                }
+            }
         }
     }
 }
