@@ -60,6 +60,11 @@ To reduce shared complexity across different projects, stdx provides the followi
 - [fmt](https://github.com/fmtlib/fmt) is used as a formatting utility in place of std::format, which is not as performant or feature-full. Is is licensed under the permissive MIT License.
 - [unordered_dense](https://github.com/martinus/unordered_dense) provides a vastly improved hash map/set implementation that is used over the inefficient C++ standard implementation. Is is licensed under the permissive MIT License.
 - [gsl](https://github.com/microsoft/gsl) is used for enforcing best practices and supporting the standard template library. Is is licensed under the permissive MIT License.
+- [nlohmann/json](https://github.com/nlohmann/json) provides a modern json system. Is is licensed under the permissive MIT License.
+- [fuzztest](https://github.com/google/fuzztest) drives fuzzing on non-windows platforms. While fuzztest is only operational on non-windows platforms, its dependencies are generally available and can be linked against freely. It and its dependencies are licensed under the permissive Apache-2.0 license.
+  - [abseil](https://github.com/abseil/abseil-cpp)
+  - [re2](https://github.com/google/re2)
+  - [googletest](https://github.com/google/googletest)
 - [kcov](https://github.com/SimonKagstrom/kcov) is used for test coverage reporting. The licensing of this tool and its dependencies are not explicitly listed here as they are not shipped with releases of stdx. It has multiple dependencies, but they are all fetched lazily as kcov is only supported on Linux, MacOS, and FreeBSD:
   - [curl](https://github.com/curl/curl) is required by all builds of kcov and is used for pulling the resulting badge. It has a single extra dependency which is chosen for cross-platform support:
     - [mbedtls](https://github.com/Mbed-TLS/mbedtls)
