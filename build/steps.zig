@@ -6,6 +6,7 @@ const CDBGenerator = @import("CDBGenerator.zig");
 const RemoveDir = @import("RemoveDir.zig");
 const CoverageParser = @import("CoverageParser.zig");
 const LOCCounter = @import("LOCCounter.zig");
+const ArrayList = @import("array_list.zig").ArrayList;
 
 pub const FmtPaths = struct {
     zig: []const []const u8,
@@ -216,16 +217,16 @@ pub const CoverageConfig = struct {
 
 /// Adds coverage reporting on supported platforms for all test artifacts
 pub fn addCoverage(b: *std.Build, config: CoverageConfig) !void {
-    var reports: std.ArrayList(RunKcovReport) = .empty;
+    var reports: ArrayList(RunKcovReport) = .init(b);
     for (config.run_configs) |run_config| {
-        try reports.append(b.allocator, try runKcov(b, config.kcov, run_config));
+        reports.append(try runKcov(b, config.kcov, run_config));
     }
 
     const coverage = b.step("coverage", "Generate coverage report");
-    for (reports.items) |report| {
+    for (reports.items()) |report| {
         coverage.dependOn(&report.runner.step);
     }
-    const merged = mergeKcovReports(b, config.kcov, reports.items);
+    const merged = mergeKcovReports(b, config.kcov, reports.items());
 
     const install_merged = b.option(
         bool,

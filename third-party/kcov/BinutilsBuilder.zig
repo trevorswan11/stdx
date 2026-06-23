@@ -275,12 +275,12 @@ fn buildOpcodes(self: *const Self, bfd_header: *std.Build.Step.ConfigHeader) Art
         .files = &.{ "dis-buf.c", "dis-init.c" },
     });
 
-    var opcodes_arch_defines: std.ArrayList([]const u8) = .empty;
+    var opcodes_arch_defines: ArrayList([]const u8) = .init(b);
     for (self.vector_archs.select_architectures) |select_architecture| {
         var arch_define = select_architecture;
         arch_define = std.mem.replaceOwned(u8, b.allocator, arch_define, "bfd_", "") catch @panic("OOM");
         arch_define = std.mem.replaceOwned(u8, b.allocator, arch_define, "_arch", "") catch @panic("OOM");
-        opcodes_arch_defines.append(b.allocator, b.fmt("-D{s}=1", .{arch_define})) catch @panic("OOM");
+        opcodes_arch_defines.append(b.fmt("-D{s}=1", .{arch_define}));
 
         mod.addCSourceFiles(.{
             .root = root,
@@ -290,7 +290,7 @@ fn buildOpcodes(self: *const Self, bfd_header: *std.Build.Step.ConfigHeader) Art
 
     mod.addCSourceFile(.{
         .file = root.path(b, "disassemble.c"),
-        .flags = opcodes_arch_defines.items,
+        .flags = opcodes_arch_defines.items(),
     });
 
     const lib = b.addLibrary(.{

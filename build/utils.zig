@@ -192,7 +192,7 @@ pub fn collectFiles(
     var walker = try dir.walk(b.allocator);
     defer walker.deinit();
 
-    var paths: std.ArrayList([]const u8) = .empty;
+    var paths: ArrayList([]const u8) = .init(b);
     outer: while (try walker.next(io)) |entry| {
         if (entry.kind != .file) continue;
         for (config.allowed_extensions) |ext| {
@@ -212,17 +212,17 @@ pub fn collectFiles(
         };
 
         if (config.return_basenames_only) {
-            try paths.append(b.allocator, b.dupe(entry.basename));
+            paths.append(b.dupe(entry.basename));
         } else {
             const full_path = b.pathJoin(&.{ directory, entry.path });
-            try paths.append(b.allocator, full_path);
+            paths.append(full_path);
         }
     }
 
     if (config.extra_files) |extra_files| {
-        try paths.appendSlice(b.allocator, extra_files);
+        paths.appendSlice(extra_files);
     }
-    return paths.items;
+    return paths.items();
 }
 
 /// Appends all collected files into the passed list

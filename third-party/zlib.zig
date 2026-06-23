@@ -2,6 +2,7 @@ const std = @import("std");
 
 const Dependency = @import("Dependency.zig");
 const Config = Dependency.Config;
+const ArrayList = @import("../build/array_list.zig").ArrayList;
 
 const zlib = @import("sources/zlib.zig");
 
@@ -16,18 +17,18 @@ pub fn build(b: *std.Build, config: Config) Dependency {
         .link_libc = true,
     });
 
-    var flags: std.ArrayList([]const u8) = .empty;
-    flags.appendSlice(b.allocator, &.{ "-std=c11", "-D_REENTRANT" }) catch @panic("OOM");
+    var flags: ArrayList([]const u8) = .init(b);
+    flags.appendSlice(&.{ "-std=c11", "-D_REENTRANT" });
     if (config.target.result.os.tag != .windows) {
-        flags.appendSlice(b.allocator, &.{ "-DHAVE_UNISTD_H", "-DHAVE_SYS_TYPES_H" }) catch @panic("OOM");
+        flags.appendSlice(&.{ "-DHAVE_UNISTD_H", "-DHAVE_SYS_TYPES_H" });
     } else {
-        flags.append(b.allocator, "-DWIN32") catch @panic("OOM");
+        flags.append("-DWIN32");
     }
 
     mod.addCSourceFiles(.{
         .root = root,
         .files = &zlib.sources,
-        .flags = flags.items,
+        .flags = flags.items(),
     });
     mod.addIncludePath(root);
 

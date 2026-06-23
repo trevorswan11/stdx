@@ -219,12 +219,6 @@ pub fn compressor(b: *std.Build) *std.Build.Step.Compile {
         .name = "compressor",
         .behavior = .standalone,
     });
-
-    if (b.graph.host.result.os.tag != .macos) return compressor_exe;
-    if (b.graph.environ_map.get("SDKROOT")) |sdkroot| {
-        const mod = compressor_exe.root_module;
-        mod.addFrameworkPath(.{ .cwd_relative = b.fmt("{s}/System/Library/Frameworks", .{sdkroot}) });
-        mod.addSystemIncludePath(.{ .cwd_relative = b.fmt("{s}/usr/include", .{sdkroot}) });
-    }
+    Dependency.addFrameworkSearchPaths(compressor_exe.root_module, b.graph.host);
     return compressor_exe;
 }

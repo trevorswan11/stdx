@@ -36,19 +36,19 @@ pub fn build(b: *std.Build) !void {
     const packaging = b.option(bool, "packaging", "Don't compile catch2 or cppcheck") orelse false;
 
     const cdb_gen_opt: ?*CDBGenerator = if (run_cdb_gen) CDBGenerator.init(b) else null;
-    var compiler_flags: std.ArrayList([]const u8) = .empty;
-    try compiler_flags.appendSlice(b.allocator, &utils.base_cxx_flags);
-    try compiler_flags.append(b.allocator, "-DMAGIC_ENUM_RANGE_MAX=255");
+    var compiler_flags: ArrayList([]const u8) = .init(b);
+    compiler_flags.appendSlice(&utils.base_cxx_flags);
+    compiler_flags.append("-DMAGIC_ENUM_RANGE_MAX=255");
     const dist_flags: []const []const u8 = &.{ "-DNDEBUG", "-DSTDX_DIST" };
 
     const profile = b.option(bool, "profile", "Enable chromium tracing") orelse false;
-    if (profile) try compiler_flags.append(b.allocator, builders.stdx_profile_define);
-    if (run_cdb_gen) CDBGenerator.addCdbFlags(b, &compiler_flags);
+    if (profile) compiler_flags.append(builders.stdx_profile_define);
+    if (run_cdb_gen) CDBGenerator.addCdbFlags(b, &compiler_flags.wrapped);
 
     switch (optimize) {
-        .Debug => try compiler_flags.appendSlice(b.allocator, &.{ "-g", "-DSTDX_DEBUG" }),
-        .ReleaseSafe => try compiler_flags.appendSlice(b.allocator, &.{"-DSTDX_RELEASE"}),
-        .ReleaseFast, .ReleaseSmall => try compiler_flags.appendSlice(b.allocator, dist_flags),
+        .Debug => compiler_flags.appendSlice(&.{ "-g", "-DSTDX_DEBUG" }),
+        .ReleaseSafe => compiler_flags.appendSlice(&.{"-DSTDX_RELEASE"}),
+        .ReleaseFast, .ReleaseSmall => compiler_flags.appendSlice(dist_flags),
     }
 
     const install_tests_only = b.option(
@@ -62,11 +62,11 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     }) orelse return;
 
-    var cdb_steps: std.ArrayList(*std.Build.Step) = .empty;
+    var cdb_steps: ArrayList(*std.Build.Step) = .init(b);
     const artifacts = try addArtifacts(b, .{
         .target = target,
         .optimize = optimize,
-        .cxx_flags = compiler_flags.items,
+        .cxx_flags = compiler_flags.items(),
         .cdb_steps = if (run_cdb_gen) &cdb_steps else null,
         .fuzztest_artifacts = fuzztest,
         .install_tests_only = install_tests_only,
@@ -76,7 +76,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     if (cdb_gen_opt) |cdb_gen| {
-        for (cdb_steps.items) |cdb_step| cdb_gen.step.dependOn(cdb_step);
+        for (cdb_steps.items()) |cdb_step| cdb_gen.step.dependOn(cdb_step);
     }
 
     const kcov_builder = KcovBuilder.build(b, .{
@@ -192,15 +192,17 @@ const TestArtifacts = struct {
     pub fn configure(
         self: *const TestArtifacts,
         b: *std.Build,
-        cdb_steps: ?*std.ArrayList(*std.Build.Step),
-        test_install_dir: ?[]const u8,
-        fuzz_install_dir: ?[]const u8,
-        install_only: bool,
+        config: struct {
+            cdb_steps: ?*ArrayList(*std.Build.Step),
+            test_install_dir: ?[]const u8 = "tests",
+            fuzz_install_dir: ?[]const u8 = "fuzz",
+            install_only: bool,
+        },
     ) !void {
-        if (cdb_steps) |cdb| {
-            try cdb.append(b.allocator, &self.stdx_tests.step);
+        if (config.cdb_steps) |cdb| {
+            cdb.append(&self.stdx_tests.step);
             if (self.fuzz_tests) |fuzz_tests| {
-                try cdb.append(b.allocator, &fuzz_tests.sample.step);
+                cdb.append(&fuzz_tests.sample.step);
             }
         }
 
@@ -215,8 +217,8 @@ const TestArtifacts = struct {
                 b,
                 artifact,
                 test_step,
-                test_install_dir,
-                install_only,
+                config.test_install_dir,
+                config.install_only,
             );
         }
 
@@ -231,8 +233,8 @@ const TestArtifacts = struct {
                     b,
                     artifact,
                     fuzz_step,
-                    fuzz_install_dir,
-                    install_only,
+                    config.fuzz_install_dir,
+                    config.install_only,
                 );
             }
         }
@@ -317,7 +319,7 @@ fn addArtifacts(b: *std.Build, config: struct {
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     cxx_flags: []const []const u8,
-    cdb_steps: ?*std.ArrayList(*std.Build.Step),
+    cdb_steps: ?*ArrayList(*std.Build.Step),
     fuzztest_artifacts: FuzztestArtifacts,
     behavior: ?utils.ExecutableBehavior = null,
     install_tests_only: bool = true,
@@ -334,7 +336,7 @@ fn addArtifacts(b: *std.Build, config: struct {
         .cxx_flags = config.cxx_flags,
     });
     b.installArtifact(libstdx);
-    if (config.cdb_steps) |cdb_steps| try cdb_steps.append(b.allocator, &libstdx.step);
+    if (config.cdb_steps) |cdb_steps| cdb_steps.append(&libstdx.step);
 
     var catch2_dep: ?Dependency = null;
     if (!config.packaging) {
@@ -439,7 +441,10 @@ fn addArtifacts(b: *std.Build, config: struct {
             .sample = sample,
         } else null,
     };
-    try tests.configure(b, config.cdb_steps, "tests", "fuzz", config.install_tests_only);
+    try tests.configure(b, .{
+        .cdb_steps = config.cdb_steps,
+        .install_only = config.install_tests_only,
+    });
 
     return .{ .libstdx = libstdx, .tests = tests };
 }
