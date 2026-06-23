@@ -3,6 +3,7 @@ const std = @import("std");
 const Dependency = @import("../Dependency.zig");
 const Config = Dependency.Config;
 const Artifact = Dependency.Artifact;
+const ArrayList = @import("../../build/array_list.zig").ArrayList;
 
 const base_mod = @import("sources/base.zig");
 const strings_mod = @import("sources/strings.zig");
@@ -286,11 +287,22 @@ pub fn build(self: *Self) void {
 
     // cctz needs its own include directory for the short-form cctz/ prefix.
     {
+        const os_tag = self.metadata.config.target.result.os.tag;
+        var sources: ArrayList([]const u8) = .fromSlice(b, &time_mod.cctz_sources);
+        if (os_tag == .windows) {
+            sources.appendSlice(&time_mod.win_sources);
+        }
+
         const lib = self.addLibrary(.{
             .name = "cctz",
             .root = self.metadata.root,
-            .sources = &time_mod.cctz_sources,
+            .sources = sources.items(),
         });
+
+        if (os_tag.isDarwin()) {
+            lib.root_module.linkFramework("CoreFoundation", .{});
+        }
+
         lib.root_module.addIncludePath(self.metadata.upstream_root);
         lib.root_module.addIncludePath(cctz_include);
         self.time.cctz = lib;
