@@ -90,7 +90,7 @@ pub fn strappedTest(b: *std.Build, config: BuildStrappedTestConfig) *std.Build.S
 
     test_exe.root_module.addCSourceFiles(.{
         .root = harness_path,
-        .files = &.{ "runner.cc", "allocator.cc", "listener.cc" },
+        .files = &.{ "runner.cc", "allocator.cc" },
         .flags = config.cxx_flags,
     });
 
@@ -180,7 +180,7 @@ pub fn fuzzTest(b: *std.Build, config: BuildFuzzTestConfig) *std.Build.Step.Comp
 
     test_exe.root_module.addCSourceFiles(.{
         .root = harness_path,
-        .files = &.{"fuzzer.cc"},
+        .files = &.{ "fuzzer.cc", "allocator.cc" },
         .flags = filtered_flags,
     });
 

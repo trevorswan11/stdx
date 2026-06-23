@@ -1,31 +1,50 @@
 const std = @import("std");
 const testing = std.testing;
 
-extern fn launch(c_int, [*c][*c]u8) c_int;
+extern "c" fn launch(c_int, [*c][*c]u8) c_int;
+extern "c" fn atexit(func: *const fn () callconv(.c) void) c_int;
 
 var instrumentor: Instrumentor = undefined;
 var instrumentor_active = false;
+var launch_result: u8 = 0;
+
+var per_test_detection_used = false;
+threadlocal var test_start_nodes: u64 = 0;
+var test_leaked: std.atomic.Value(bool) = .init(false);
+
+export fn harness_begin_test() callconv(.c) void {
+    per_test_detection_used = true;
+    test_start_nodes = instrumentor.node_counter.load(.acquire);
+}
+
+export fn harness_end_test(test_name: [*:0]const u8) callconv(.c) void {
+    const current = instrumentor.node_counter.load(.acquire);
+    if (current > test_start_nodes) {
+        test_leaked.store(true, .seq_cst);
+        std.log.warn("LEAK: {d} allocation(s) not freed by test '{s}'", .{ current - test_start_nodes, test_name });
+    }
+}
+
+fn atexitReport() callconv(.c) void {
+    instrumentor.report();
+    const per_test_leak = test_leaked.load(.acquire);
+    const process_leak = !per_test_detection_used and instrumentor.node_counter.load(.acquire) > 0;
+    const leak_bit: u8 = @intFromBool(per_test_leak or process_leak);
+    instrumentor.deinit();
+    std.c._exit(@intCast(launch_result | leak_bit));
+}
 
 pub fn main(init: std.process.Init) !void {
-    var gpa: Gpa = .init;
-    const allocator = gpa.allocator();
-
-    instrumentor = .init(allocator, init.io);
-    defer instrumentor.deinit(&gpa);
+    instrumentor = .init(init.io);
+    _ = atexit(atexitReport);
 
     const args = try instrumentor.getCArgs(init.minimal.args);
     std.log.info("{s}", .{args.argv[0]});
-    const proc: usize = @intCast(launch(args.argc, args.argv));
 
-    const result: u8 = @intCast(gpa.detectLeaks() | proc);
-    instrumentor.report();
-    std.process.exit(result);
+    const proc: c_int = launch(args.argc, args.argv);
+    launch_result = @truncate(@as(c_uint, @bitCast(proc)));
+    std.c.exit(@intCast(launch_result));
 }
-
-const Gpa = std.heap.DebugAllocator(.{
-    .thread_safe = true,
-    .stack_trace_frames = if (std.debug.sys_can_stack_trace) 10 else 0,
-});
 
 const Instrumentor = struct {
     const internal_allocator = std.heap.c_allocator;
@@ -44,7 +63,6 @@ const Instrumentor = struct {
     const header_magic = 0xDEADBEEF;
     const header_size = @sizeOf(AllocHeader);
 
-    allocator: std.mem.Allocator,
     io: std.Io,
 
     args: ?struct {
@@ -60,23 +78,21 @@ const Instrumentor = struct {
     live_lock: std.Io.Mutex = .init,
     live_allocations: std.AutoHashMap(usize, void),
 
-    pub fn init(allocator: std.mem.Allocator, io: std.Io) Instrumentor {
+    pub fn init(io: std.Io) Instrumentor {
         instrumentor_active = true;
         return .{
-            .allocator = allocator,
             .io = io,
             .live_allocations = .init(internal_allocator),
         };
     }
 
-    pub fn deinit(self: *Instrumentor, gpa: ?*Gpa) void {
+    pub fn deinit(self: *Instrumentor) void {
         instrumentor_active = false;
         self.live_allocations.deinit();
         if (self.args) |*args| {
             freeArgs(internal_allocator, &args.zig_conv);
             internal_allocator.free(args.c_conv);
         }
-        if (gpa) |g| _ = g.deinit();
     }
 
     fn freeArgs(allocator: std.mem.Allocator, args: *std.ArrayList([:0]u8)) void {
@@ -121,8 +137,8 @@ const Instrumentor = struct {
         _ = self.total_alloc.fetchAdd(@intCast(total), .acq_rel);
         _ = self.node_counter.fetchAdd(1, .acq_rel);
 
-        const mem = self.allocator.alloc(u8, total) catch return error.AllocationFailed;
-        errdefer self.allocator.free(mem);
+        const mem = internal_allocator.alloc(u8, total) catch return error.AllocationFailed;
+        errdefer internal_allocator.free(mem);
         const base_ptr = mem.ptr;
 
         const aligned_ptr = blk: {
@@ -181,7 +197,7 @@ const Instrumentor = struct {
 
         const base_ptr = key - header.offset;
         const slice = @as([*]u8, @ptrFromInt(base_ptr))[0..header.size];
-        self.allocator.free(slice);
+        internal_allocator.free(slice);
     }
 
     // Handles the locks itself
@@ -252,6 +268,17 @@ export fn alloc(size: usize) callconv(.c) ?*anyopaque {
 }
 
 fn deallocInternal(ptr: *anyopaque) void {
+    const key = @intFromPtr(ptr);
+    if (key >= Instrumentor.header_size) {
+        const header: *const Instrumentor.AllocHeader = @ptrFromInt(key - Instrumentor.header_size);
+        if (header.valid()) {
+            // Recover the original base_ptr and free the full instrumented block.
+            const base_ptr = key - header.offset;
+            const slice = @as([*]u8, @ptrFromInt(base_ptr))[0..header.size];
+            return Instrumentor.internal_allocator.free(slice);
+        }
+    }
+
     Instrumentor.internal_allocator.rawFree(
         @as([*]u8, @ptrCast(ptr))[0..0],
         .of(std.c.max_align_t),
@@ -296,16 +323,16 @@ test "Exposed alloc/dealloc pre-init" {
 }
 
 test "Active flag (re)setting" {
-    var inst: Instrumentor = .init(testing.allocator, testing.io);
-    errdefer inst.deinit(null);
+    var inst: Instrumentor = .init(testing.io);
+    errdefer inst.deinit();
     try std.testing.expect(instrumentor_active);
-    inst.deinit(null);
+    inst.deinit();
     try std.testing.expect(!instrumentor_active);
 }
 
 test "Exposed alloc/dealloc post-init" {
-    instrumentor = .init(testing.allocator, testing.io);
-    defer instrumentor.deinit(null);
+    instrumentor = .init(testing.io);
+    defer instrumentor.deinit();
 
     const mem = alloc(8);
     try std.testing.expect(mem != null);
@@ -313,8 +340,8 @@ test "Exposed alloc/dealloc post-init" {
 }
 
 test "Correct allocation pipeline" {
-    var inst: Instrumentor = .init(testing.allocator, testing.io);
-    defer inst.deinit(null);
+    var inst: Instrumentor = .init(testing.io);
+    defer inst.deinit();
 
     for ([_]usize{ 1, 4, 16, 31, 65, 1024 }) |size| {
         const ptr = try inst.alloc(size);
@@ -339,8 +366,8 @@ test "Correct allocation pipeline" {
 }
 
 test "Detect double free" {
-    var inst: Instrumentor = .init(testing.allocator, testing.io);
-    defer inst.deinit(null);
+    var inst: Instrumentor = .init(testing.io);
+    defer inst.deinit();
 
     const ptr = try inst.alloc(32);
     try inst.dealloc(ptr);
@@ -348,8 +375,8 @@ test "Detect double free" {
 }
 
 test "Detect invalid free" {
-    var inst: Instrumentor = .init(testing.allocator, testing.io);
-    defer inst.deinit(null);
+    var inst: Instrumentor = .init(testing.io);
+    defer inst.deinit();
 
     const ptr = try testing.allocator.alloc(u8, 32);
     defer testing.allocator.free(ptr);
@@ -357,8 +384,8 @@ test "Detect invalid free" {
 }
 
 test "Detect header corruption" {
-    var inst: Instrumentor = .init(testing.allocator, testing.io);
-    defer inst.deinit(null);
+    var inst: Instrumentor = .init(testing.io);
+    defer inst.deinit();
     const ptr = try inst.alloc(32);
 
     const addr = @intFromPtr(ptr);
@@ -371,8 +398,8 @@ test "Detect header corruption" {
 }
 
 test "Concurrent allocation stress" {
-    var inst: Instrumentor = .init(testing.allocator, testing.io);
-    defer inst.deinit(null);
+    var inst: Instrumentor = .init(testing.io);
+    defer inst.deinit();
     var threads: [4]std.Thread = undefined;
 
     const Runner = struct {

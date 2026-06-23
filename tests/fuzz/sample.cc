@@ -1,6 +1,10 @@
 #include <fuzztest/fuzztest.h>
 #include <gtest/gtest.h>
 
-void MyApiAlwaysSucceedsOnPositiveIntegers(int i) { EXPECT_TRUE(true); }
-FUZZ_TEST(MyApiTest, MyApiAlwaysSucceedsOnPositiveIntegers)
-    .WithDomains(/*i:*/ fuzztest::Positive<int>());
+namespace {
+
+auto happy_test(int) -> void { EXPECT_TRUE(true); }
+
+} // namespace
+
+FUZZ_TEST(HappyTest, happy_test).WithDomains(fuzztest::Positive<int>());
