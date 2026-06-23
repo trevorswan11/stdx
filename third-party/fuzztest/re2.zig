@@ -7,8 +7,8 @@ const AbseilBuilder = @import("../abseil/AbseilBuilder.zig");
 
 const re2 = @import("sources/re2.zig");
 
-pub fn build(b: *std.Build, abseil: *AbseilBuilder) ?Dependency {
-    const upstream = b.lazyDependency("re2", .{}) orelse return null;
+pub fn build(b: *std.Build, abseil: *AbseilBuilder) Dependency {
+    const upstream = b.dependency("re2", .{});
     const mod = b.createModule(.{
         .target = abseil.metadata.config.target,
         .optimize = abseil.metadata.config.optimize,

@@ -20,8 +20,8 @@ gtest: Artifact = undefined,
 gtest_main: Artifact = undefined,
 gmock: Artifact = undefined,
 
-pub fn build(b: *std.Build, config: Config) ?*Self {
-    const upstream = b.lazyDependency("googletest", .{}) orelse return null;
+pub fn build(b: *std.Build, config: Config) *Self {
+    const upstream = b.dependency("googletest", .{});
 
     const self = b.allocator.create(Self) catch @panic("OOM");
     self.* = .{

@@ -137,8 +137,8 @@ log: Log = .{},
 flags: Flags = .{},
 random: Random = .{},
 
-pub fn init(b: *std.Build, config: Config) ?*Self {
-    const upstream = b.lazyDependency("abseil", .{}) orelse return null;
+pub fn init(b: *std.Build, config: Config) *Self {
+    const upstream = b.dependency("abseil", .{});
 
     const self = b.allocator.create(Self) catch @panic("OOM");
     self.* = .{

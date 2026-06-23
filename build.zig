@@ -7,8 +7,7 @@ pub const RemoveDir = @import("build/RemoveDir.zig");
 pub const LOCCounter = @import("build/LOCCounter.zig");
 pub const CoverageParser = @import("build/CoverageParser.zig");
 pub const Packager = @import("build/Packager.zig");
-const array_list = @import("build/array_list.zig");
-pub const ArrayList = array_list.ArrayList;
+pub const ArrayList = @import("build/array_list.zig").ArrayList;
 const ProjectPaths = @import("build/ProjectPaths.zig");
 
 pub const Dependency = @import("third-party/Dependency.zig");
@@ -26,7 +25,6 @@ pub const catch2 = @import("third-party/catch2.zig");
 pub const zlib = @import("third-party/zlib.zig");
 pub const zstd = @import("third-party/zstd.zig");
 pub const libarchive = @import("third-party/libarchive.zig");
-pub const antlr4 = @import("third-party/fuzztest/antlr4.zig");
 pub const re2 = @import("third-party/fuzztest/re2.zig");
 
 pub fn build(b: *std.Build) !void {
@@ -59,12 +57,18 @@ pub fn build(b: *std.Build) !void {
         "Install tests without running them (default: false)",
     ) orelse false;
 
+    const fuzztest = installFuzztest(b, .{
+        .target = target,
+        .optimize = optimize,
+    }) orelse return;
+
     var cdb_steps: std.ArrayList(*std.Build.Step) = .empty;
     const artifacts = try addArtifacts(b, .{
         .target = target,
         .optimize = optimize,
         .cxx_flags = compiler_flags.items,
         .cdb_steps = if (run_cdb_gen) &cdb_steps else null,
+        .fuzztest_artifacts = fuzztest,
         .install_tests_only = install_tests_only,
         .building_for_dep = building_for_dep,
         .packaging = packaging,
@@ -125,82 +129,112 @@ pub fn build(b: *std.Build) !void {
             },
         });
     }
+}
 
-    // TODO: Probably remove beyond this point
-    const config: Dependency.Config = .{
-        .target = target,
-        .optimize = optimize,
+const FuzztestArtifacts = struct {
+    abseil: *AbseilBuilder,
+    gtest_builder: *GTestBuilder,
+    re2_dep: Dependency,
+    fuzztest_builder: ?*FuzztestBuilder,
+};
+
+/// Installs fuzztest and dependents
+fn installFuzztest(b: *std.Build, config: Dependency.Config) ?FuzztestArtifacts {
+    const gtest = GTestBuilder.build(b, config);
+    b.installArtifact(gtest.gtest);
+    b.installArtifact(gtest.gtest_main);
+    b.installArtifact(gtest.gmock);
+
+    const abseil = AbseilBuilder.init(b, config);
+    abseil.build();
+    const groups = .{
+        abseil.base,      abseil.numeric,   abseil.strings,
+        abseil.time,      abseil.debugging, abseil.synchronization,
+        abseil.profiling, abseil.hash,      abseil.crc,
+        abseil.container, abseil.status,    abseil.log,
+        abseil.flags,     abseil.random,
+    };
+    inline for (groups) |group| {
+        inline for (std.meta.fields(@TypeOf(group))) |field| {
+            b.installArtifact(@field(group, field.name));
+        }
+    }
+
+    const re2_dep = re2.build(b, abseil);
+    b.installArtifact(re2_dep.artifact);
+
+    var artifacts: FuzztestArtifacts = .{
+        .abseil = abseil,
+        .gtest_builder = gtest,
+        .re2_dep = re2_dep,
+        .fuzztest_builder = null,
     };
 
-    const gtest_dep = GTestBuilder.build(b, config);
-    if (gtest_dep) |gtest| {
-        b.installArtifact(gtest.gtest);
-        b.installArtifact(gtest.gtest_main);
-        b.installArtifact(gtest.gmock);
+    if (config.target.result.os.tag == .windows) {
+        return artifacts;
     }
 
-    if (antlr4.build(b, config)) |antlr| {
-        b.installArtifact(antlr.artifact);
-    }
-
-    if (AbseilBuilder.init(b, config)) |abseil| {
-        abseil.build();
-        const groups = .{
-            abseil.base,      abseil.numeric,   abseil.strings,
-            abseil.time,      abseil.debugging, abseil.synchronization,
-            abseil.profiling, abseil.hash,      abseil.crc,
-            abseil.container, abseil.status,    abseil.log,
-            abseil.flags,     abseil.random,
-        };
-        inline for (groups) |group| {
-            inline for (std.meta.fields(@TypeOf(group))) |field| {
-                b.installArtifact(@field(group, field.name));
-            }
-        }
-
-        if (re2.build(b, abseil)) |re| {
-            b.installArtifact(re.artifact);
-
-            if (gtest_dep) |gtest| {
-                if (target.result.os.tag != .windows) {
-                    if (FuzztestBuilder.build(b, abseil, gtest, re)) |fuzztest| {
-                        b.installArtifact(fuzztest.fuzztest);
-                    }
-                }
-            }
-        }
-    }
+    const fuzztest = FuzztestBuilder.build(b, abseil, gtest, re2_dep) orelse return null;
+    b.installArtifact(fuzztest.fuzztest);
+    artifacts.fuzztest_builder = fuzztest;
+    return artifacts;
 }
 
 const TestArtifacts = struct {
+    const FuzzTests = struct {
+        sample: *std.Build.Step.Compile,
+    };
+
     harness_tests: *std.Build.Step.Compile = undefined,
     stdx_tests: *std.Build.Step.Compile = undefined,
+    fuzz_tests: ?FuzzTests,
 
     pub fn configure(
         self: *const TestArtifacts,
         b: *std.Build,
         cdb_steps: ?*std.ArrayList(*std.Build.Step),
-        install_dir: ?[]const u8,
+        test_install_dir: ?[]const u8,
+        fuzz_install_dir: ?[]const u8,
         install_only: bool,
     ) !void {
         if (cdb_steps) |cdb| {
             try cdb.append(b.allocator, &self.stdx_tests.step);
+            if (self.fuzz_tests) |fuzz_tests| {
+                try cdb.append(b.allocator, &fuzz_tests.sample.step);
+            }
         }
 
-        const artifacts = [_]*std.Build.Step.Compile{
+        const test_artifacts = [_]*std.Build.Step.Compile{
             self.harness_tests,
             self.stdx_tests,
         };
 
         const test_step = b.step("test", "Run all unit tests");
-        for (artifacts) |artifact| {
+        for (test_artifacts) |artifact| {
             _ = utils.ExecutableBehavior.installArtifact(
                 b,
                 artifact,
                 test_step,
-                install_dir,
+                test_install_dir,
                 install_only,
             );
+        }
+
+        if (self.fuzz_tests) |fuzz_tests| {
+            const fuzz_artifacts = [_]*std.Build.Step.Compile{
+                fuzz_tests.sample,
+            };
+
+            const fuzz_step = b.step("fuzz", "Run all fuzz tests");
+            for (fuzz_artifacts) |artifact| {
+                _ = utils.ExecutableBehavior.installArtifact(
+                    b,
+                    artifact,
+                    fuzz_step,
+                    fuzz_install_dir,
+                    install_only,
+                );
+            }
         }
     }
 };
@@ -284,6 +318,7 @@ fn addArtifacts(b: *std.Build, config: struct {
     optimize: std.builtin.OptimizeMode,
     cxx_flags: []const []const u8,
     cdb_steps: ?*std.ArrayList(*std.Build.Step),
+    fuzztest_artifacts: FuzztestArtifacts,
     behavior: ?utils.ExecutableBehavior = null,
     install_tests_only: bool = true,
     building_for_dep: bool = true,
@@ -364,11 +399,45 @@ fn addArtifacts(b: *std.Build, config: struct {
         },
     });
 
+    var sample_fuzz_test: ?*std.Build.Step.Compile = null;
+    if (config.fuzztest_artifacts.fuzztest_builder) |fuzztest_builder| {
+        sample_fuzz_test = builders.fuzzTest(b, .{
+            .target = config.target,
+            .optimize = config.optimize,
+            .stdx = .{
+                .internal = .{
+                    .stdx_builder = b,
+                    .libstdx = libstdx,
+                    .libfuzztest = fuzztest_builder.fuzztest,
+                    .libgtest = config.fuzztest_artifacts.gtest_builder.gtest,
+                },
+            },
+            .cxx_files = &.{ProjectPaths.fuzz_tests ++ "sample.cc"},
+            .cxx_flags = config.cxx_flags,
+            .profile = config.profile,
+            .include_paths = &.{b.path(ProjectPaths.include)},
+            .executable_config = .{
+                .name = "sample",
+                .behavior = config.behavior orelse .{
+                    .installable = .{
+                        .cmd_name = "fuzz-sample",
+                        .cmd_desc = "Run the sample fuzz test",
+                        .install_dir = "fuzz",
+                        .install_only = config.install_tests_only,
+                    },
+                },
+            },
+        });
+    }
+
     const tests: TestArtifacts = .{
         .harness_tests = harness_tests,
         .stdx_tests = stdx_tests,
+        .fuzz_tests = if (sample_fuzz_test) |sample| .{
+            .sample = sample,
+        } else null,
     };
-    try tests.configure(b, config.cdb_steps, "tests", config.install_tests_only);
+    try tests.configure(b, config.cdb_steps, "tests", "fuzz", config.install_tests_only);
 
     return .{ .libstdx = libstdx, .tests = tests };
 }

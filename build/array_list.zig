@@ -21,6 +21,13 @@ pub fn ArrayList(T: type) type {
             self.wrapped.appendSlice(self.b.allocator, slice) catch @panic("OOM");
         }
 
+        pub fn clone(self: *Self) Self {
+            return .{
+                .b = self.b,
+                .wrapped = self.wrapped.clone(self.b.allocator) catch @panic("OOM"),
+            };
+        }
+
         pub fn fromSlice(b: *std.Build, slice: []const T) Self {
             var self: Self = .init(b);
             self.appendSlice(slice);

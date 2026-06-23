@@ -6,6 +6,7 @@ const steps = @import("steps.zig");
 pub const include = "include/";
 pub const src = "src/";
 pub const tests = "tests/";
+pub const fuzz_tests = tests ++ "fuzz/";
 pub const tools = "tools/";
 pub const harness = tools ++ "harness/";
 pub const fuzzer = tools ++ "fuzzer/";
