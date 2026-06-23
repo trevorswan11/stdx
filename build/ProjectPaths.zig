@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const ArrayList = @import("array_list.zig").ArrayList;
+
 const utils = @import("utils.zig");
 const steps = @import("steps.zig");
 
@@ -9,29 +11,25 @@ pub const tests = "tests/";
 pub const fuzz_tests = tests ++ "fuzz/";
 pub const tools = "tools/";
 pub const harness = tools ++ "harness/";
-pub const fuzzer = tools ++ "fuzzer/";
 pub const compressor = tools ++ "compressor/";
-pub const fuzz = "fuzz/";
 pub const build = "build/";
 
 pub fn collectToolingPaths(b: *std.Build) !steps.FmtPaths {
-    const zig_paths = try std.mem.concat(b.allocator, []const u8, &.{
-        try utils.collectFiles(b, build, .{
-            .allowed_extensions = &.{".zig"},
-            .extra_files = &.{
-                "build.zig",
-                "build.zig.zon",
-            },
-        }),
-        try utils.collectFiles(b, tools, .{ .allowed_extensions = &.{".zig"} }),
-    });
+    var zig_paths: ArrayList([]const u8) = .init(b);
+    try utils.collectFilesInto(b, build, .{
+        .allowed_extensions = &.{".zig"},
+        .extra_files = &.{
+            "build.zig",
+            "build.zig.zon",
+        },
+    }, &zig_paths);
+    try utils.collectFilesInto(b, tools, .{ .allowed_extensions = &.{".zig"} }, &zig_paths);
 
-    const cxx_paths = try std.mem.concat(b.allocator, []const u8, &.{
-        try utils.collectFiles(b, include, .{ .allowed_extensions = &.{".hh"} }),
-        try utils.collectFiles(b, src, .{ .allowed_extensions = &.{".cc"} }),
-        try utils.collectFiles(b, tests, .{ .allowed_extensions = &.{ ".hh", ".cc" } }),
-        try utils.collectFiles(b, tools, .{ .allowed_extensions = &.{ ".hh", ".cc", ".h" } }),
-    });
+    var cxx_paths: ArrayList([]const u8) = .init(b);
+    try utils.collectFilesInto(b, include, .{ .allowed_extensions = &.{".hh"} }, &cxx_paths);
+    try utils.collectFilesInto(b, src, .{ .allowed_extensions = &.{".cc"} }, &cxx_paths);
+    try utils.collectFilesInto(b, tests, .{ .allowed_extensions = &.{ ".hh", ".cc" } }, &cxx_paths);
+    try utils.collectFilesInto(b, tools, .{ .allowed_extensions = &.{ ".hh", ".cc", ".h" } }, &cxx_paths);
 
-    return .{ .zig = zig_paths, .cxx = cxx_paths };
+    return .{ .zig = zig_paths.items(), .cxx = cxx_paths.items() };
 }

@@ -17,7 +17,7 @@ pub fn build(b: *std.Build, abseil: *AbseilBuilder) Dependency {
     Dependency.addFrameworkSearchPaths(mod, abseil.metadata.config.target);
 
     const root = upstream.path("");
-    mod.addIncludePath(root);
+    mod.addSystemIncludePath(root);
 
     mod.addCSourceFiles(.{
         .root = root,
@@ -25,19 +25,25 @@ pub fn build(b: *std.Build, abseil: *AbseilBuilder) Dependency {
         .flags = &.{"-std=c++17"},
     });
 
-    mod.linkLibrary(abseil.base.base);
-    mod.linkLibrary(abseil.strings.strings);
-    mod.linkLibrary(abseil.strings.str_format_internal);
-    mod.linkLibrary(abseil.hash.hash);
-    mod.linkLibrary(abseil.container.raw_hash_set);
-    mod.linkLibrary(abseil.synchronization.synchronization);
-    mod.linkLibrary(abseil.log.message);
-    mod.linkLibrary(abseil.log.globals);
+    const link_libs = [_]Artifact{
+        abseil.base.base,
+        abseil.strings.strings,
+        abseil.strings.str_format_internal,
+        abseil.hash.hash,
+        abseil.container.raw_hash_set,
+        abseil.synchronization.synchronization,
+        abseil.log.message,
+        abseil.log.globals,
+    };
 
     const lib = b.addLibrary(.{
         .name = "re2",
         .root_module = mod,
     });
+    for (link_libs) |link_lib| {
+        mod.linkLibrary(link_lib);
+        lib.installLibraryHeaders(link_lib);
+    }
 
     for (re2.public_includes) |inc| {
         lib.installHeader(root.path(b, inc), inc);

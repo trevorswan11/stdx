@@ -379,7 +379,9 @@ fn addArtifacts(b: *std.Build, config: struct {
                 .libcatch2 = catch2_dep.?.artifact,
             },
         },
-        .cxx_files = try utils.collectFiles(b, ProjectPaths.tests, .{}),
+        .cxx_files = try utils.collectFiles(b, ProjectPaths.tests, .{
+            .dropped_path_prefixes = &.{"fuzz/"},
+        }),
         .cxx_flags = config.cxx_flags,
         .profile = config.profile,
         .include_paths = &.{
@@ -462,15 +464,14 @@ fn addTooling(b: *std.Build, config: struct {
     }
 
     const counted_extensions = [_][]const u8{ ".cc", ".hh", ".zig" };
-    const counted_files = try std.mem.concat(b.allocator, []const u8, &.{
-        try utils.collectFiles(b, "build", .{
-            .allowed_extensions = &counted_extensions,
-            .extra_files = &.{"build.zig"},
-        }),
-        try utils.collectFiles(b, "include", .{ .allowed_extensions = &counted_extensions }),
-        try utils.collectFiles(b, "src", .{ .allowed_extensions = &counted_extensions }),
-        try utils.collectFiles(b, "tests", .{ .allowed_extensions = &counted_extensions }),
-        try utils.collectFiles(b, "tools", .{ .allowed_extensions = &counted_extensions }),
-    });
-    _ = LOCCounter.init(b, counted_files);
+    var counted_files: ArrayList([]const u8) = .init(b);
+    try utils.collectFilesInto(b, "build", .{
+        .allowed_extensions = &counted_extensions,
+        .extra_files = &.{"build.zig"},
+    }, &counted_files);
+    try utils.collectFilesInto(b, "include", .{ .allowed_extensions = &counted_extensions }, &counted_files);
+    try utils.collectFilesInto(b, "src", .{ .allowed_extensions = &counted_extensions }, &counted_files);
+    try utils.collectFilesInto(b, "tests", .{ .allowed_extensions = &counted_extensions }, &counted_files);
+    try utils.collectFilesInto(b, "tools", .{ .allowed_extensions = &counted_extensions }, &counted_files);
+    _ = LOCCounter.init(b, counted_files.items());
 }

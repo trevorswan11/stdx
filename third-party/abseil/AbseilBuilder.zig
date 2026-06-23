@@ -23,7 +23,13 @@ const Metadata = struct {
     upstream_root: std.Build.LazyPath,
 };
 
-const Base = struct {
+pub const Algorithm = struct {
+    pub const rel_path = "algorithm/";
+};
+
+pub const Base = struct {
+    pub const rel_path = base_mod.root;
+
     raw_logging_internal: Artifact = undefined,
     spinlock_wait: Artifact = undefined,
     throw_delegate: Artifact = undefined,
@@ -33,11 +39,111 @@ const Base = struct {
     tracing_internal: Artifact = undefined,
 };
 
-const Numeric = struct {
+pub const Cleanup = struct {
+    pub const rel_path = "algorithm/";
+};
+
+pub const Container = struct {
+    pub const rel_path = "container/";
+
+    hashtablez_sampler: Artifact = undefined,
+    raw_hash_set: Artifact = undefined,
+};
+
+pub const Crc = struct {
+    pub const rel_path = "crc/";
+
+    crc_internal: Artifact = undefined,
+    non_temporal_memcpy: Artifact = undefined,
+    crc32c: Artifact = undefined,
+    crc_cord_state: Artifact = undefined,
+};
+
+pub const Debugging = struct {
+    pub const rel_path = "debugging/";
+
+    debugging_internal: Artifact = undefined,
+    demangle_internal: Artifact = undefined,
+    borrowed_fixup_buffer: Artifact = undefined,
+    stacktrace: Artifact = undefined,
+    examine_stack: Artifact = undefined,
+    symbolize: Artifact = undefined,
+    failure_signal_handler: Artifact = undefined,
+    leak_check: Artifact = undefined,
+};
+
+pub const Flags = struct {
+    pub const rel_path = "flags/";
+
+    commandlineflag: Artifact = undefined,
+    marshalling: Artifact = undefined,
+    reflection: Artifact = undefined,
+    flag: Artifact = undefined,
+    parse: Artifact = undefined,
+};
+
+pub const Functional = struct {
+    pub const rel_path = "functional/";
+};
+
+const Hash = struct {
+    pub const rel_path = "hash/";
+
+    city: Artifact = undefined,
+    hash: Artifact = undefined,
+};
+
+pub const Log = struct {
+    pub const rel_path = log_mod.root;
+
+    foundation: Artifact = undefined,
+    sink_set: Artifact = undefined,
+    message: Artifact = undefined,
+    globals: Artifact = undefined,
+    initialize: Artifact = undefined,
+    die_if_null: Artifact = undefined,
+    flags: Artifact = undefined,
+};
+
+pub const Memory = struct {
+    pub const rel_path = "memory/";
+};
+
+pub const Meta = struct {
+    pub const rel_path = "meta/";
+};
+
+pub const Numeric = struct {
+    pub const rel_path = "numeric/";
+
     int128: Artifact = undefined,
 };
 
-const Strings = struct {
+pub const Profiling = struct {
+    pub const rel_path = "profiling/";
+
+    exponential_biased: Artifact = undefined,
+    periodic_sampler: Artifact = undefined,
+};
+
+pub const Random = struct {
+    pub const rel_path = random_mod.root;
+
+    random_internal: Artifact = undefined,
+    distributions: Artifact = undefined,
+    seed_sequences: Artifact = undefined,
+};
+
+pub const Status = struct {
+    pub const rel_path = "status/";
+
+    status: Artifact = undefined,
+    statusor: Artifact = undefined,
+};
+
+pub const Strings = struct {
+    pub const rel_path = strings_mod.root;
+
     internal: Artifact = undefined,
     strings: Artifact = undefined,
     str_format_internal: Artifact = undefined,
@@ -48,75 +154,27 @@ const Strings = struct {
     cord: Artifact = undefined,
 };
 
-const Time = struct {
-    cctz: Artifact = undefined,
-    time: Artifact = undefined,
-};
+pub const Synchronization = struct {
+    pub const rel_path = synchronization_mod.root;
 
-const Debugging = struct {
-    debugging_internal: Artifact = undefined,
-    demangle_internal: Artifact = undefined,
-    stacktrace: Artifact = undefined,
-    symbolize: Artifact = undefined,
-    failure_signal_handler: Artifact = undefined,
-    leak_check: Artifact = undefined,
-};
-
-const Synchronization = struct {
     graphcycles_internal: Artifact = undefined,
     kernel_timeout_internal: Artifact = undefined,
     synchronization: Artifact = undefined,
 };
 
-const Profiling = struct {
-    exponential_biased: Artifact = undefined,
-    periodic_sampler: Artifact = undefined,
+const Time = struct {
+    pub const rel_path = time_mod.root;
+
+    cctz: Artifact = undefined,
+    time: Artifact = undefined,
 };
 
-const Hash = struct {
-    city: Artifact = undefined,
-    hash: Artifact = undefined,
+pub const Types = struct {
+    pub const rel_path = "types/";
 };
 
-const Crc = struct {
-    crc_internal: Artifact = undefined,
-    non_temporal_memcpy: Artifact = undefined,
-    crc32c: Artifact = undefined,
-    crc_cord_state: Artifact = undefined,
-};
-
-const Container = struct {
-    hashtablez_sampler: Artifact = undefined,
-    raw_hash_set: Artifact = undefined,
-};
-
-const Status = struct {
-    status: Artifact = undefined,
-    statusor: Artifact = undefined,
-};
-
-const Log = struct {
-    foundation: Artifact = undefined,
-    sink_set: Artifact = undefined,
-    message: Artifact = undefined,
-    globals: Artifact = undefined,
-    initialize: Artifact = undefined,
-    die_if_null: Artifact = undefined,
-    flags: Artifact = undefined,
-};
-
-const Flags = struct {
-    commandlineflag: Artifact = undefined,
-    marshalling: Artifact = undefined,
-    reflection: Artifact = undefined,
-    flag: Artifact = undefined,
-    parse: Artifact = undefined,
-};
-
-const Random = struct {
-    random_internal: Artifact = undefined,
-    distributions: Artifact = undefined,
-    seed_sequences: Artifact = undefined,
+pub const Utility = struct {
+    pub const rel_path = "utility/";
 };
 
 b: *std.Build,
@@ -351,10 +409,19 @@ pub fn build(self: *Self) void {
         },
     });
 
+    self.debugging.borrowed_fixup_buffer = self.buildAbslLib(.{
+        .name = "borrowed_fixup_buffer",
+        .sources = &.{"debugging/internal/borrowed_fixup_buffer.cc"},
+        .link_libraries = &.{
+            self.base.malloc_internal,
+        },
+    });
+
     self.debugging.stacktrace = self.buildAbslLib(.{
         .name = "stacktrace",
         .sources = &.{"debugging/stacktrace.cc"},
         .link_libraries = &.{
+            self.debugging.borrowed_fixup_buffer,
             self.debugging.debugging_internal,
             self.base.base,
             self.base.malloc_internal,
@@ -381,14 +448,22 @@ pub fn build(self: *Self) void {
         },
     });
 
-    // failure_signal_handler bundles examine_stack
+    self.debugging.examine_stack = self.buildAbslLib(.{
+        .name = "examine_stack",
+        .sources = &.{"debugging/internal/examine_stack.cc"},
+        .link_libraries = &.{
+            self.debugging.stacktrace,
+            self.debugging.symbolize,
+            self.base.base,
+            self.base.raw_logging_internal,
+        },
+    });
+
     self.debugging.failure_signal_handler = self.buildAbslLib(.{
         .name = "failure_signal_handler",
-        .sources = &.{
-            "debugging/failure_signal_handler.cc",
-            "debugging/internal/examine_stack.cc",
-        },
+        .sources = &.{"debugging/failure_signal_handler.cc"},
         .link_libraries = &.{
+            self.debugging.examine_stack,
             self.debugging.stacktrace,
             self.debugging.symbolize,
             self.base.base,
@@ -624,6 +699,7 @@ pub fn build(self: *Self) void {
         .link_libraries = &.{
             self.log.foundation,
             self.log.sink_set,
+            self.debugging.examine_stack,
             self.base.base,
             self.base.raw_logging_internal,
             self.strings.strings,

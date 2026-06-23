@@ -40,8 +40,8 @@ pub fn build(
         },
     };
 
-    self.fuzztest = self.buildCore(absl, re2);
-    self.fuzztest_gtest_main = self.buildGtestMain(absl, gtest);
+    self.fuzztest = self.buildCore(absl, re2, gtest);
+    self.fuzztest_gtest_main = self.buildGtestMain(gtest);
 
     return self;
 }
@@ -50,39 +50,50 @@ fn buildCore(
     self: *const Self,
     absl: *AbseilBuilder,
     re2: Dependency,
+    gtest: *GTestBuilder,
 ) Artifact {
     const b = self.b;
     const mod = self.addModule(&fuzztest_mod.sources);
     mod.addIncludePath(re2.upstream.path(""));
 
-    mod.linkLibrary(absl.synchronization.synchronization);
-    mod.linkLibrary(absl.strings.cord);
-    mod.linkLibrary(absl.container.raw_hash_set);
-    mod.linkLibrary(absl.status.statusor);
-    mod.linkLibrary(absl.log.message);
-    mod.linkLibrary(absl.log.globals);
-    mod.linkLibrary(absl.random.seed_sequences);
-    mod.linkLibrary(re2.artifact);
+    const link_libs = [_]Artifact{
+        absl.synchronization.synchronization,
+        absl.strings.cord,
+        absl.container.raw_hash_set,
+        absl.status.statusor,
+        absl.log.message,
+        absl.log.globals,
+        absl.random.seed_sequences,
+        absl.random.distributions,
+        absl.debugging.stacktrace,
+        re2.artifact,
+        gtest.gtest,
+        absl.debugging.failure_signal_handler,
+        absl.flags.parse,
+    };
 
     const lib = b.addLibrary(.{
         .name = "fuzztest",
         .root_module = mod,
     });
+    for (link_libs) |link_lib| {
+        mod.linkLibrary(link_lib);
+        lib.installLibraryHeaders(link_lib);
+    }
+
     lib.installHeadersDirectory(self.metadata.root.path(b, "fuzztest"), "fuzztest", .{});
+    lib.installHeadersDirectory(self.metadata.root.path(b, "common"), "common", .{});
     return lib;
 }
 
 fn buildGtestMain(
     self: *const Self,
-    absl: *AbseilBuilder,
     gtest: *GTestBuilder,
 ) Artifact {
     const mod = self.addModule(&fuzztest_mod.gtest_main_sources);
 
     mod.linkLibrary(self.fuzztest);
     mod.linkLibrary(gtest.gtest);
-    mod.linkLibrary(absl.debugging.failure_signal_handler);
-    mod.linkLibrary(absl.flags.parse);
 
     return self.b.addLibrary(.{
         .name = "fuzztest_gtest_main",
@@ -98,7 +109,7 @@ fn addModule(self: *const Self, sources: []const []const u8) *std.Build.Module {
         .link_libcpp = true,
     });
 
-    mod.addIncludePath(self.metadata.root);
+    mod.addSystemIncludePath(self.metadata.root);
     mod.addCSourceFiles(.{
         .root = self.metadata.root,
         .files = sources,

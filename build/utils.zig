@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const CDBGenerator = @import("CDBGenerator.zig");
+const ArrayList = @import("array_list.zig").ArrayList;
 
 pub const base_cxx_flags = [_][]const u8{
     "-std=c++23",
@@ -176,6 +177,7 @@ pub const CollectFilesConfig = struct {
     extra_files: ?[]const []const u8 = null,
     return_basenames_only: bool = false,
     dropped_extensions: ?[]const []const u8 = null,
+    dropped_path_prefixes: ?[]const []const u8 = null,
 };
 
 pub fn collectFiles(
@@ -205,6 +207,10 @@ pub fn collectFiles(
             if (std.mem.endsWith(u8, entry.basename, drop_file)) continue :outer;
         };
 
+        if (config.dropped_path_prefixes) |prefixes| for (prefixes) |prefix| {
+            if (std.mem.startsWith(u8, entry.path, prefix)) continue :outer;
+        };
+
         if (config.return_basenames_only) {
             try paths.append(b.allocator, b.dupe(entry.basename));
         } else {
@@ -217,6 +223,16 @@ pub fn collectFiles(
         try paths.appendSlice(b.allocator, extra_files);
     }
     return paths.items;
+}
+
+/// Appends all collected files into the passed list
+pub fn collectFilesInto(
+    b: *std.Build,
+    directory: []const u8,
+    config: CollectFilesConfig,
+    buf: *ArrayList([]const u8),
+) !void {
+    buf.appendSlice(try collectFiles(b, directory, config));
 }
 
 pub fn tryAppendExe(

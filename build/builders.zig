@@ -131,7 +131,27 @@ pub const BuildFuzzTestConfig = BuildHarnessTestConfig(union(enum) {
     }
 });
 
-/// Build's a zig-harness-driven catch2 test artifact
+const fuzz_dropped_flags: []const []const u8 = &.{
+    "-Wpedantic",
+    "-Wconversion",
+    "-Wextra",
+    "-Werror",
+};
+
+fn fuzzCxxFlags(b: *std.Build, flags: []const []const u8) []const []const u8 {
+    var out: ArrayList([]const u8) = .fromSlice(b, &.{});
+    outer: for (flags) |flag| {
+        for (fuzz_dropped_flags) |dropped| {
+            if (std.mem.eql(u8, flag, dropped)) continue :outer;
+        }
+        out.append(flag);
+    }
+    return out.items();
+}
+
+/// Builds a fuzztest/gtest-driven fuzz test artifact
+///
+/// Assumes that you are on a target that can fuzz test
 pub fn fuzzTest(b: *std.Build, config: BuildFuzzTestConfig) *std.Build.Step.Compile {
     var link_libraries: ArrayList(*std.Build.Step.Compile) = .fromSlice(b, config.link_libraries);
     link_libraries.appendSlice(&.{
@@ -139,6 +159,7 @@ pub fn fuzzTest(b: *std.Build, config: BuildFuzzTestConfig) *std.Build.Step.Comp
         config.stdx.getLibfuzztest(),
         config.stdx.getLibgtest(),
     });
+    const filtered_flags = fuzzCxxFlags(b, config.cxx_flags);
 
     const stdx_builder = config.stdx.getStdxBuilder();
     const harness_path = stdx_builder.path(ProjectPaths.harness);
@@ -151,7 +172,7 @@ pub fn fuzzTest(b: *std.Build, config: BuildFuzzTestConfig) *std.Build.Step.Comp
         .system_include_paths = config.system_include_paths,
         .cxx = .{
             .files = config.cxx_files,
-            .flags = config.cxx_flags,
+            .flags = filtered_flags,
         },
         .link_libraries = link_libraries.items(),
     }, config.executable_config);
@@ -159,8 +180,8 @@ pub fn fuzzTest(b: *std.Build, config: BuildFuzzTestConfig) *std.Build.Step.Comp
 
     test_exe.root_module.addCSourceFiles(.{
         .root = harness_path,
-        .files = &.{ "fuzzer.cc", "allocator.cc" },
-        .flags = config.cxx_flags,
+        .files = &.{"fuzzer.cc"},
+        .flags = filtered_flags,
     });
 
     if (config.profile) {

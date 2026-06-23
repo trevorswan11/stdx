@@ -31,10 +31,10 @@ pub const sources = [_][]const u8{
     "fuzztest/internal/domains/regexp_dfa.cc",
     "fuzztest/internal/domains/rune.cc",
     "fuzztest/internal/domains/utf.cc",
+    "fuzztest/init_fuzztest.cc",
+    "fuzztest/internal/googletest_adaptor.cc",
 };
 
 pub const gtest_main_sources = [_][]const u8{
     "fuzztest/fuzztest_gtest_main.cc",
-    "fuzztest/init_fuzztest.cc",
-    "fuzztest/internal/googletest_adaptor.cc",
 };

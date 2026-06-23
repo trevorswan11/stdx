@@ -2,7 +2,6 @@ pub const root = "random";
 
 pub const random_internal_sources = [_][]const u8{
     "random/internal/entropy_pool.cc",
-    "random/internal/gaussian_distribution_gentables.cc",
     "random/internal/randen.cc",
     "random/internal/randen_detect.cc",
     "random/internal/randen_hwaes.cc",

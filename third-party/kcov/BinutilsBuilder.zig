@@ -3,6 +3,7 @@ const std = @import("std");
 const Dependency = @import("../Dependency.zig");
 const Config = Dependency.Config;
 const Artifact = Dependency.Artifact;
+const ArrayList = @import("../../build/array_list.zig").ArrayList;
 
 const iberty = @import("sources/iberty.zig");
 const opcodes = @import("sources/opcodes.zig");
@@ -202,10 +203,9 @@ fn buildBfd(self: *const Self) struct { Artifact, bfd.ConfigHeaders } {
     lib.installHeader(include.path(b, "symcat.h"), "symcat.h");
     lib.installHeader(include.path(b, "diagnostics.h"), "diagnostics.h");
 
-    bfd.generateSources(b, root, mod, std.mem.concat(b.allocator, []const u8, &.{
-        &.{self.vector_archs.default_vector},
-        self.vector_archs.select_vectors,
-    }) catch @panic("OOM"));
+    var target_vectors: ArrayList([]const u8) = .fromSlice(b, self.vector_archs.select_vectors);
+    target_vectors.append(self.vector_archs.default_vector);
+    bfd.generateSources(b, root, mod, target_vectors.items());
 
     for (self.vector_archs.select_architectures) |select_architecture| {
         var arch_source = select_architecture;
