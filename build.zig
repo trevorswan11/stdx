@@ -381,9 +381,7 @@ fn addArtifacts(b: *std.Build, config: struct {
                 .libcatch2 = catch2_dep.?.artifact,
             },
         },
-        .cxx_files = try utils.collectFiles(b, ProjectPaths.tests, .{
-            .dropped_path_prefixes = &.{"fuzz/"},
-        }),
+        .cxx_files = try utils.collectFiles(b, ProjectPaths.tests, .{}),
         .cxx_flags = config.cxx_flags,
         .profile = config.profile,
         .include_paths = &.{
