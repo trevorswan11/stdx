@@ -21,11 +21,3 @@ pub const time_sources = [_][]const u8{
     "time/format.cc",
     "time/time.cc",
 };
-
-pub const clock_interface_sources = [_][]const u8{
-    "time/clock_interface.cc",
-};
-
-pub const simulated_clock_sources = [_][]const u8{
-    "time/simulated_clock.cc",
-};

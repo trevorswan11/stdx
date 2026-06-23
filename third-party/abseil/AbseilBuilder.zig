@@ -4,12 +4,12 @@ const Dependency = @import("../Dependency.zig");
 const Config = Dependency.Config;
 const Artifact = Dependency.Artifact;
 
-const base_mod = @import("sources/abseil/base.zig");
-const strings_mod = @import("sources/abseil/strings.zig");
-const synchronization_mod = @import("sources/abseil/synchronization.zig");
-const time_mod = @import("sources/abseil/time.zig");
-const log_mod = @import("sources/abseil/log.zig");
-const random_mod = @import("sources/abseil/random.zig");
+const base_mod = @import("sources/base.zig");
+const strings_mod = @import("sources/strings.zig");
+const synchronization_mod = @import("sources/synchronization.zig");
+const time_mod = @import("sources/time.zig");
+const log_mod = @import("sources/log.zig");
+const random_mod = @import("sources/random.zig");
 
 const Self = @This();
 
@@ -36,10 +36,6 @@ const Numeric = struct {
     int128: Artifact = undefined,
 };
 
-const Types = struct {
-    source_location: Artifact = undefined,
-};
-
 const Strings = struct {
     internal: Artifact = undefined,
     strings: Artifact = undefined,
@@ -54,8 +50,6 @@ const Strings = struct {
 const Time = struct {
     cctz: Artifact = undefined,
     time: Artifact = undefined,
-    clock_interface: Artifact = undefined,
-    simulated_clock: Artifact = undefined,
 };
 
 const Debugging = struct {
@@ -98,7 +92,6 @@ const Container = struct {
 const Status = struct {
     status: Artifact = undefined,
     statusor: Artifact = undefined,
-    status_builder: Artifact = undefined,
 };
 
 const Log = struct {
@@ -130,7 +123,6 @@ metadata: Metadata,
 
 base: Base = .{},
 numeric: Numeric = .{},
-types: Types = .{},
 strings: Strings = .{},
 time: Time = .{},
 debugging: Debugging = .{},
@@ -162,6 +154,7 @@ pub fn init(b: *std.Build, config: Config) ?*Self {
 
 /// This function was written mostly by Claude
 pub fn build(self: *Self) void {
+    // I bent over backwards to write LLVM's builder from scratch... never again
     const b = self.b;
     const cctz_include = self.metadata.root.path(b, "time/internal/cctz/include");
 
@@ -184,11 +177,6 @@ pub fn build(self: *Self) void {
     self.numeric.int128 = self.buildAbslLib(.{
         .name = "int128",
         .sources = &.{"numeric/int128.cc"},
-    });
-
-    self.types.source_location = self.buildAbslLib(.{
-        .name = "source_location",
-        .sources = &.{"types/source_location.cc"},
     });
 
     // Tier 1: depend only on tier-0 artifacts
@@ -256,6 +244,7 @@ pub fn build(self: *Self) void {
     self.crc.crc_internal = self.buildAbslLib(.{
         .name = "crc_internal",
         .sources = &.{
+            "crc/internal/cpu_detect.cc",
             "crc/internal/crc.cc",
             "crc/internal/crc_memcpy_fallback.cc",
             "crc/internal/crc_memcpy_x86_arm_combined.cc",
@@ -432,41 +421,6 @@ pub fn build(self: *Self) void {
         },
     });
 
-    // Tier 7b: time artifacts that require synchronization
-    {
-        const lib = self.addLibrary(.{
-            .name = "clock_interface",
-            .root = self.metadata.root,
-            .sources = &time_mod.clock_interface_sources,
-            .link_libraries = &.{
-                self.time.time,
-                self.base.base,
-                self.base.raw_logging_internal,
-                self.synchronization.synchronization,
-            },
-        });
-        lib.root_module.addIncludePath(self.metadata.upstream_root);
-        lib.root_module.addIncludePath(cctz_include);
-        self.time.clock_interface = lib;
-    }
-
-    {
-        const lib = self.addLibrary(.{
-            .name = "simulated_clock",
-            .root = self.metadata.root,
-            .sources = &time_mod.simulated_clock_sources,
-            .link_libraries = &.{
-                self.time.clock_interface,
-                self.time.time,
-                self.base.base,
-                self.synchronization.synchronization,
-            },
-        });
-        lib.root_module.addIncludePath(self.metadata.upstream_root);
-        lib.root_module.addIncludePath(cctz_include);
-        self.time.simulated_clock = lib;
-    }
-
     // Tier 8: profiling (needs sync + time)
     self.profiling.exponential_biased = self.buildAbslLib(.{
         .name = "exponential_biased",
@@ -610,7 +564,6 @@ pub fn build(self: *Self) void {
             self.strings.strings,
             self.strings.cord,
             self.strings.str_format_internal,
-            self.types.source_location,
         },
     });
 
@@ -626,21 +579,6 @@ pub fn build(self: *Self) void {
         },
     });
 
-    self.status.status_builder = self.buildAbslLib(.{
-        .name = "status_builder",
-        .sources = &.{"status/status_builder.cc"},
-        .link_libraries = &.{
-            self.status.status,
-            self.base.base,
-            self.strings.strings,
-            self.strings.cord,
-            self.strings.internal,
-            self.strings.str_format_internal,
-            self.time.time,
-            self.types.source_location,
-        },
-    });
-
     // Tier 13a: log foundation (no sync dep)
     self.log.foundation = self.buildAbslLib(.{
         .name = "log_foundation",
@@ -652,7 +590,6 @@ pub fn build(self: *Self) void {
             self.strings.internal,
             self.strings.str_format_internal,
             self.time.time,
-            self.types.source_location,
         },
     });
 
@@ -715,7 +652,6 @@ pub fn build(self: *Self) void {
             self.base.base,
             self.base.raw_logging_internal,
             self.strings.strings,
-            self.types.source_location,
         },
     });
 
@@ -875,8 +811,6 @@ fn addLibrary(self: *const Self, config: struct {
     root: std.Build.LazyPath,
     sources: []const []const u8,
     link_libraries: []const Artifact = &.{},
-    extra_include_paths: []const std.Build.LazyPath = &.{},
-    config_headers: []const *std.Build.Step.ConfigHeader = &.{},
 }) Artifact {
     const b = self.b;
     const mod = b.createModule(.{
@@ -892,8 +826,6 @@ fn addLibrary(self: *const Self, config: struct {
         .flags = &compile_flags,
     });
     mod.addIncludePath(config.root);
-    for (config.extra_include_paths) |inc| mod.addIncludePath(inc);
-    for (config.config_headers) |header| mod.addConfigHeader(header);
     for (config.link_libraries) |link| mod.linkLibrary(link);
 
     const lib = b.addLibrary(.{
@@ -904,9 +836,6 @@ fn addLibrary(self: *const Self, config: struct {
     lib.installHeadersDirectory(config.root, "absl", .{
         .include_extensions = &.{ ".h", ".inc" },
     });
-    for (config.link_libraries) |link| lib.installLibraryHeaders(link);
-    for (config.config_headers) |header| lib.installConfigHeader(header);
-
     return lib;
 }
 

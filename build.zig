@@ -14,6 +14,7 @@ const ProjectPaths = @import("build/ProjectPaths.zig");
 pub const Dependency = @import("third-party/Dependency.zig");
 pub const KcovBuilder = @import("third-party/kcov/KcovBuilder.zig");
 pub const GTestBuilder = @import("third-party/fuzztest/GTestBuilder.zig");
+pub const AbseilBuilder = @import("third-party/abseil/AbseilBuilder.zig");
 
 pub const utils = @import("build/utils.zig");
 pub const builders = @import("build/builders.zig");
@@ -25,6 +26,7 @@ pub const zlib = @import("third-party/zlib.zig");
 pub const zstd = @import("third-party/zstd.zig");
 pub const libarchive = @import("third-party/libarchive.zig");
 pub const antlr4 = @import("third-party/fuzztest/antlr4.zig");
+pub const re2 = @import("third-party/fuzztest/re2.zig");
 
 pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
@@ -123,13 +125,13 @@ pub fn build(b: *std.Build) !void {
         });
     }
 
+    // TODO: Probably remove beyond this point
     const config: Dependency.Config = .{
         .target = target,
         .optimize = optimize,
     };
 
-    const gtest_builder = GTestBuilder.build(b, config);
-    if (gtest_builder) |gtest| {
+    if (GTestBuilder.build(b, config)) |gtest| {
         b.installArtifact(gtest.gtest);
         b.installArtifact(gtest.gtest_main);
         b.installArtifact(gtest.gmock);
@@ -137,6 +139,26 @@ pub fn build(b: *std.Build) !void {
 
     if (antlr4.build(b, config)) |antlr| {
         b.installArtifact(antlr.artifact);
+    }
+
+    if (AbseilBuilder.init(b, config)) |abseil| {
+        abseil.build();
+        const groups = .{
+            abseil.base,      abseil.numeric,   abseil.strings,
+            abseil.time,      abseil.debugging, abseil.synchronization,
+            abseil.profiling, abseil.hash,      abseil.crc,
+            abseil.container, abseil.status,    abseil.log,
+            abseil.flags,     abseil.random,
+        };
+        inline for (groups) |group| {
+            inline for (std.meta.fields(@TypeOf(group))) |field| {
+                b.installArtifact(@field(group, field.name));
+            }
+        }
+
+        if (re2.build(b, abseil)) |re| {
+            b.installArtifact(re.artifact);
+        }
     }
 }
 

@@ -30,10 +30,10 @@ pub fn build(b: *std.Build, config: Config) ?Dependency {
         },
     });
 
-    const artifact = b.addLibrary(.{
+    const lib = b.addLibrary(.{
         .name = "antlr4_static",
         .root_module = mod,
     });
-    artifact.installHeadersDirectory(root.path(b, "src"), "antlr4-runtime", .{});
-    return .{ .upstream = upstream, .artifact = artifact };
+    lib.installHeadersDirectory(root.path(b, "src"), "antlr4-runtime", .{});
+    return .{ .upstream = upstream, .artifact = lib };
 }
