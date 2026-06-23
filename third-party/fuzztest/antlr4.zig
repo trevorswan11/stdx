@@ -16,7 +16,10 @@ pub fn build(b: *std.Build, config: Config) ?Dependency {
 
     const root = upstream.path(antlr4.root);
     for (antlr4.includes) |inc| mod.addIncludePath(root.path(b, inc));
-    if (config.target.result.os.tag.isDarwin()) mod.linkFramework("CoreFoundation", .{});
+    if (config.target.result.os.tag.isDarwin()) {
+        Dependency.addFrameworkSearchPaths(mod, config.target);
+        mod.linkFramework("CoreFoundation", .{});
+    }
 
     mod.addCSourceFiles(.{
         .root = root,

@@ -14,6 +14,7 @@ pub fn build(b: *std.Build, abseil: *AbseilBuilder) ?Dependency {
         .optimize = abseil.metadata.config.optimize,
         .link_libcpp = true,
     });
+    Dependency.addFrameworkSearchPaths(mod, abseil.metadata.config.target);
 
     const root = upstream.path("");
     mod.addIncludePath(root);

@@ -831,6 +831,7 @@ fn addLibrary(self: *const Self, config: struct {
         .link_libc = true,
         .link_libcpp = true,
     });
+    Dependency.addFrameworkSearchPaths(mod, self.metadata.config.target);
 
     mod.addCSourceFiles(.{
         .root = config.root,
