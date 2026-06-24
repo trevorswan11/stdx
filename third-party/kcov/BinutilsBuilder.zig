@@ -205,7 +205,7 @@ fn buildBfd(self: *const Self) struct { Artifact, bfd.ConfigHeaders } {
 
     var target_vectors: ArrayList([]const u8) = .fromSlice(b, self.vector_archs.select_vectors);
     target_vectors.append(self.vector_archs.default_vector);
-    bfd.generateSources(b, root, mod, target_vectors.items());
+    bfd.generateSources(b, root, mod, target_vectors.wrapped.items);
 
     for (self.vector_archs.select_architectures) |select_architecture| {
         var arch_source = select_architecture;
@@ -290,7 +290,7 @@ fn buildOpcodes(self: *const Self, bfd_header: *std.Build.Step.ConfigHeader) Art
 
     mod.addCSourceFile(.{
         .file = root.path(b, "disassemble.c"),
-        .flags = opcodes_arch_defines.items(),
+        .flags = opcodes_arch_defines.wrapped.items,
     });
 
     const lib = b.addLibrary(.{

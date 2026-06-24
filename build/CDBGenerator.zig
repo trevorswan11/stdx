@@ -115,7 +115,7 @@ fn generateCdb(step: *std.Build.Step, _: std.Build.Step.MakeOptions) !void {
         }
     }
 
-    for (old_frags.items()) |old| {
+    for (old_frags.wrapped.items) |old| {
         dir.deleteFile(io, old) catch continue;
     }
 

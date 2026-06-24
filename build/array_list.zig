@@ -33,9 +33,5 @@ pub fn ArrayList(T: type) type {
             self.appendSlice(slice);
             return self;
         }
-
-        pub fn items(self: *Self) []T {
-            return self.wrapped.items;
-        }
     };
 }

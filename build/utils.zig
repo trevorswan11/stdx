@@ -222,7 +222,7 @@ pub fn collectFiles(
     if (config.extra_files) |extra_files| {
         paths.appendSlice(extra_files);
     }
-    return paths.items();
+    return paths.wrapped.items;
 }
 
 /// Appends all collected files into the passed list

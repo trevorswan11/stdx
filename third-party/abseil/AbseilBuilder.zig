@@ -354,7 +354,7 @@ pub fn build(self: *Self) void {
         const lib = self.addLibrary(.{
             .name = "cctz",
             .root = self.metadata.root,
-            .sources = sources.items(),
+            .sources = sources.wrapped.items,
         });
 
         if (os_tag.isDarwin()) {

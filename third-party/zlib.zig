@@ -28,7 +28,7 @@ pub fn build(b: *std.Build, config: Config) Dependency {
     mod.addCSourceFiles(.{
         .root = root,
         .files = &zlib.sources,
-        .flags = flags.items(),
+        .flags = flags.wrapped.items,
     });
     mod.addIncludePath(root);
 

@@ -223,10 +223,10 @@ pub fn addCoverage(b: *std.Build, config: CoverageConfig) !void {
     }
 
     const coverage = b.step("coverage", "Generate coverage report");
-    for (reports.items()) |report| {
+    for (reports.wrapped.items) |report| {
         coverage.dependOn(&report.runner.step);
     }
-    const merged = mergeKcovReports(b, config.kcov, reports.items());
+    const merged = mergeKcovReports(b, config.kcov, reports.wrapped.items);
 
     const install_merged = b.option(
         bool,

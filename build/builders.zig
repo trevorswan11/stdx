@@ -85,7 +85,7 @@ pub fn strappedTest(b: *std.Build, config: BuildStrappedTestConfig) *std.Build.S
             .files = config.cxx_files,
             .flags = config.cxx_flags,
         },
-        .link_libraries = link_libraries.items(),
+        .link_libraries = link_libraries.wrapped.items,
     }, config.executable_config);
 
     test_exe.root_module.addCSourceFiles(.{
@@ -146,7 +146,7 @@ fn fuzzCxxFlags(b: *std.Build, flags: []const []const u8) []const []const u8 {
         }
         out.append(flag);
     }
-    return out.items();
+    return out.wrapped.items;
 }
 
 /// Builds a fuzztest/gtest-driven fuzz test artifact
@@ -174,7 +174,7 @@ pub fn fuzzTest(b: *std.Build, config: BuildFuzzTestConfig) *std.Build.Step.Comp
             .files = config.cxx_files,
             .flags = filtered_flags,
         },
-        .link_libraries = link_libraries.items(),
+        .link_libraries = link_libraries.wrapped.items,
     }, config.executable_config);
     Dependency.addFrameworkSearchPaths(test_exe.root_module, config.target);
 

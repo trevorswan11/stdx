@@ -61,7 +61,7 @@ pub fn build(b: *std.Build) !void {
     const artifacts = try addArtifacts(b, .{
         .target = target,
         .optimize = optimize,
-        .cxx_flags = compiler_flags.items(),
+        .cxx_flags = compiler_flags.wrapped.items,
         .cdb_steps = if (run_cdb_gen) &cdb_steps else null,
         .install_tests_only = install_tests_only,
         .building_for_dep = building_for_dep,
@@ -70,7 +70,7 @@ pub fn build(b: *std.Build) !void {
     });
 
     if (cdb_gen_opt) |cdb_gen| {
-        for (cdb_steps.items()) |cdb_step| cdb_gen.step.dependOn(cdb_step);
+        for (cdb_steps.wrapped.items) |cdb_step| cdb_gen.step.dependOn(cdb_step);
     }
 
     const kcov_builder = KcovBuilder.build(b, .{
@@ -468,5 +468,5 @@ fn addTooling(b: *std.Build, config: struct {
     var counted_files: ArrayList([]const u8) = .init(b);
     counted_files.appendSlice(paths.zig);
     counted_files.appendSlice(paths.cxx);
-    _ = LOCCounter.init(b, counted_files.items());
+    _ = LOCCounter.init(b, counted_files.wrapped.items);
 }
