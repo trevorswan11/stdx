@@ -1,10 +1,13 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <new>
 #include <type_traits>
 #include <utility>
 
 #include "stdx/assert.hh"
+#include "stdx/type_traits.hh"
 #include "stdx/types.hh"
 
 namespace stdx {
@@ -19,6 +22,16 @@ constexpr auto operator""_TiB(unsigned long long int x) noexcept -> u64 { return
 constexpr auto operator""_PiB(unsigned long long int x) noexcept -> u64 { return 1'024_TiB * x; }
 
 } // namespace size_literals
+
+// Interprets a region of raw bytes as a trivially-copyable, implicit-lifetime type T
+template <TriviallyCopyable T> [[nodiscard]] auto object_at(std::byte* bytes) noexcept -> T* {
+    return std::launder(reinterpret_cast<T*>(bytes));
+}
+
+template <TriviallyCopyable T>
+[[nodiscard]] auto object_at(const std::byte* bytes) noexcept -> const T* {
+    return std::launder(reinterpret_cast<const T*>(bytes));
+}
 
 // cppcheck-suppress-begin noExplicitConstructor
 

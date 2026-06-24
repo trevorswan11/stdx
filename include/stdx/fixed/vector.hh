@@ -90,13 +90,52 @@ template <typename Item, usize Capacity> class vector {
 
     // Constructs an object in place at the end of the vector with the provided args
     template <typename... Args> constexpr auto emplace_back(Args&&... args) -> void {
-        ASSERT(size_ < Capacity, "StaticVector size out of range");
+        ASSERT(size_ < Capacity, "size out of range");
         std::construct_at(data() + size_, std::forward<Args>(args)...);
         size_++;
     }
 
     constexpr auto push_back(const Item& item) -> void { emplace_back(item); }
     constexpr auto push_back(Item&& item) -> void { emplace_back(std::move(item)); }
+
+    constexpr auto pop_back() noexcept -> void {
+        ASSERT(size_ > 0, "pop_back on empty vector");
+        std::destroy_at(data() + --size_);
+    }
+
+    [[nodiscard]] constexpr auto front(this auto&& self) noexcept -> decltype(auto) {
+        ASSERT(self.size_ > 0, "front on empty vector");
+        return self.data()[0];
+    }
+
+    [[nodiscard]] constexpr auto back(this auto&& self) noexcept -> decltype(auto) {
+        ASSERT(self.size_ > 0, "back on empty vector");
+        return self.data()[self.size_ - 1];
+    }
+
+    // Removes the element at `pos`, shifting the tail down one slot
+    //
+    // Returns an iterator to the element that followed the erased one (or end())
+    constexpr auto erase(iterator pos) -> iterator {
+        ASSERT(pos >= begin() && pos < end(), "erase position out of range");
+        for (iterator it{pos}; it + 1 != end(); ++it) { *it = std::move(*(it + 1)); }
+        std::destroy_at(data() + --size_);
+        return pos;
+    }
+
+    // Grows (constructing and copying a value) or shrinks the vector
+    //
+    // The value is never constructed if shrinking
+    template <typename... Args> constexpr auto resize(usize new_size, Args&&... args) -> void {
+        if (size_ > new_size) {
+            while (size_ > new_size) { pop_back(); }
+            return;
+        }
+
+        ASSERT(new_size <= Capacity, "resize beyond capacity");
+        Item value{std::forward<Args>(args)...};
+        while (size_ < new_size) { push_back(value); }
+    }
 
     [[nodiscard]] constexpr explicit operator gsl::span<Item>() noexcept { return {data(), size_}; }
     [[nodiscard]] constexpr explicit operator gsl::span<const Item>() const noexcept {
@@ -105,7 +144,7 @@ template <typename Item, usize Capacity> class vector {
 
     [[nodiscard]] constexpr auto operator[](this auto&& self, usize idx) noexcept
         -> decltype(auto) {
-        ASSERT(idx < self.size_, "StaticVector index out of bounds");
+        ASSERT(idx < self.size_, "index out of bounds");
         return self.data()[idx];
     }
 

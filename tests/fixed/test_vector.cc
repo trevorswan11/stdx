@@ -173,4 +173,66 @@ TEST_CASE("fixed::vector ranges compatibility") {
     CHECK(sum == 6);
 }
 
+TEST_CASE("fixed::vector front/back/pop_back") {
+    fixed::vector<i32, 4> vec{10, 20, 30};
+    CHECK(vec.front() == 10);
+    CHECK(vec.back() == 30);
+
+    vec.back() = 99;
+    CHECK(vec.back() == 99);
+
+    vec.pop_back();
+    CHECK(vec.size() == 2);
+    CHECK(vec.back() == 20);
+}
+
+TEST_CASE("fixed::vector pop_back destroys the popped element") {
+    tracker::reset();
+    {
+        fixed::vector<tracker, 4> vec;
+        vec.emplace_back(0);
+        vec.emplace_back(0);
+        CHECK(tracker::live_count == 2);
+
+        vec.pop_back();
+        CHECK(vec.size() == 1);
+        CHECK(tracker::live_count == 1);
+        CHECK(tracker::destruct_count == 1);
+    }
+    CHECK(tracker::live_count == 0);
+}
+
+TEST_CASE("fixed::vector erase shifts the tail down") {
+    fixed::vector<i32, 5> vec{1, 2, 3, 4};
+
+    auto* next{vec.erase(vec.begin() + 1)}; // remove the 2
+    CHECK(vec.size() == 3);
+    CHECK(vec[0] == 1);
+    CHECK(vec[1] == 3);
+    CHECK(vec[2] == 4);
+    CHECK(*next == 3); // iterator points at the element that followed
+
+    vec.erase(vec.end() - 1); // remove the last element
+    CHECK(vec.size() == 2);
+    CHECK(vec.back() == 3);
+}
+
+TEST_CASE("fixed::vector resize grows and shrinks") {
+    fixed::vector<i32, 8> vec{1, 2, 3};
+
+    vec.resize(5, 7);
+    CHECK(vec.size() == 5);
+    CHECK(vec[3] == 7);
+    CHECK(vec[4] == 7);
+
+    vec.resize(2);
+    CHECK(vec.size() == 2);
+    CHECK(vec[1] == 2);
+
+    vec.resize(4); // value-initialized i32 => 0
+    CHECK(vec.size() == 4);
+    CHECK(vec[2] == 0);
+    CHECK(vec[3] == 0);
+}
+
 } // namespace stdx::tests

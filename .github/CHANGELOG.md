@@ -44,3 +44,9 @@
 # v1.4.1
 
 - Make fuzztest a non-lazy dependency so that it's trivial to link against it and its dependencies in applications and libraries
+
+# v1.4.2
+
+- Add pop_back, erase, and resize to vector alongside some utility (front, back) helpers
+- Add object_at to memory
+- Add DISCARD macro for (void) pattern

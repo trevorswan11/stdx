@@ -62,4 +62,7 @@ constexpr auto todo_impl(std::source_location loc, [[maybe_unused]] Args&&... ar
 
 #define TODO(...) ::stdx::detail::todo_impl(std::source_location::current(), __VA_ARGS__);
 
+// Discards the result of an expression without compiling it out
+#define DISCARD(expression) (void)(expression)
+
 } // namespace stdx
