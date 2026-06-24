@@ -1,6 +1,6 @@
 .{
     .name = .stdx,
-    .version = "1.4.0",
+    .version = "1.4.1",
     .minimum_zig_version = "0.16.0",
     .fingerprint = 0x5479474f83add874,
     .dependencies = .{
@@ -47,7 +47,6 @@
         .fuzztest = .{
             .url = "https://github.com/google/fuzztest/archive/refs/tags/2026-02-19.tar.gz",
             .hash = "N-V-__8AAAOGPQAIRRMOhOxA3wZyCyfphEdrp91WLkHHzWZf",
-            .lazy = true,
         },
         .abseil = .{
             .url = "https://github.com/abseil/abseil-cpp/archive/refs/tags/20260107.1.tar.gz",

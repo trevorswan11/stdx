@@ -27,8 +27,8 @@ pub fn build(
     absl: *AbseilBuilder,
     gtest: *GTestBuilder,
     re2: Dependency,
-) ?*Self {
-    const upstream = b.lazyDependency("fuzztest", .{}) orelse return null;
+) *Self {
+    const upstream = b.dependency("fuzztest", .{});
 
     const self = b.allocator.create(Self) catch @panic("OOM");
     self.* = .{

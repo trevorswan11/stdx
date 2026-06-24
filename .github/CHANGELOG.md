@@ -40,3 +40,7 @@
 - A sample fuzz test was added that uses the new fuzzer harness extension
 - All of these dependencies can be brought in by your `build.zig` except for fuzztest which does not work on windows
 - Improved the zig side of the harness to support both Catch2 and GTest workflows
+
+# v1.4.1
+
+- Make fuzztest a non-lazy dependency so that it's trivial to link against it and its dependencies in applications and libraries

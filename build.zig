@@ -57,18 +57,12 @@ pub fn build(b: *std.Build) !void {
         "Install tests without running them (default: false)",
     ) orelse false;
 
-    const fuzztest = installFuzztest(b, .{
-        .target = target,
-        .optimize = optimize,
-    }) orelse return;
-
     var cdb_steps: ArrayList(*std.Build.Step) = .init(b);
     const artifacts = try addArtifacts(b, .{
         .target = target,
         .optimize = optimize,
         .cxx_flags = compiler_flags.items(),
         .cdb_steps = if (run_cdb_gen) &cdb_steps else null,
-        .fuzztest_artifacts = fuzztest,
         .install_tests_only = install_tests_only,
         .building_for_dep = building_for_dep,
         .packaging = packaging,
@@ -139,7 +133,7 @@ const FuzztestArtifacts = struct {
 };
 
 /// Installs fuzztest and dependents
-fn installFuzztest(b: *std.Build, config: Dependency.Config) ?FuzztestArtifacts {
+fn installFuzztest(b: *std.Build, config: Dependency.Config) FuzztestArtifacts {
     const gtest = GTestBuilder.build(b, config);
     b.installArtifact(gtest.gtest);
     b.installArtifact(gtest.gtest_main);
@@ -174,7 +168,7 @@ fn installFuzztest(b: *std.Build, config: Dependency.Config) ?FuzztestArtifacts 
         return artifacts;
     }
 
-    const fuzztest = FuzztestBuilder.build(b, abseil, gtest, re2_dep) orelse return null;
+    const fuzztest: *FuzztestBuilder = .build(b, abseil, gtest, re2_dep);
     b.installArtifact(fuzztest.fuzztest);
     artifacts.fuzztest_builder = fuzztest;
     return artifacts;
@@ -320,7 +314,6 @@ fn addArtifacts(b: *std.Build, config: struct {
     optimize: std.builtin.OptimizeMode,
     cxx_flags: []const []const u8,
     cdb_steps: ?*ArrayList(*std.Build.Step),
-    fuzztest_artifacts: FuzztestArtifacts,
     behavior: ?utils.ExecutableBehavior = null,
     install_tests_only: bool = true,
     building_for_dep: bool = true,
@@ -346,6 +339,11 @@ fn addArtifacts(b: *std.Build, config: struct {
         });
         b.installArtifact(catch2_dep.?.artifact);
     }
+
+    const fuzztest_artifacts = installFuzztest(b, .{
+        .target = config.target,
+        .optimize = config.optimize,
+    });
 
     if (config.building_for_dep or catch2_dep == null) {
         return .{ .libstdx = libstdx, .tests = null };
@@ -402,7 +400,7 @@ fn addArtifacts(b: *std.Build, config: struct {
     });
 
     var sample_fuzz_test: ?*std.Build.Step.Compile = null;
-    if (config.fuzztest_artifacts.fuzztest_builder) |fuzztest_builder| {
+    if (fuzztest_artifacts.fuzztest_builder) |fuzztest_builder| {
         sample_fuzz_test = builders.fuzzTest(b, .{
             .target = config.target,
             .optimize = config.optimize,
@@ -411,7 +409,7 @@ fn addArtifacts(b: *std.Build, config: struct {
                     .stdx_builder = b,
                     .libstdx = libstdx,
                     .libfuzztest = fuzztest_builder.fuzztest,
-                    .libgtest = config.fuzztest_artifacts.gtest_builder.gtest,
+                    .libgtest = fuzztest_artifacts.gtest_builder.gtest,
                 },
             },
             .cxx_files = &.{ProjectPaths.fuzz_tests ++ "sample.cc"},
