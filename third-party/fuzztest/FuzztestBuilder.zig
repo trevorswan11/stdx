@@ -22,6 +22,10 @@ metadata: Metadata,
 fuzztest: Artifact = undefined,
 fuzztest_gtest_main: Artifact = undefined,
 
+pub fn canFuzz(target: std.Build.ResolvedTarget) bool {
+    return target.result.os.tag != .windows;
+}
+
 pub fn build(
     b: *std.Build,
     absl: *AbseilBuilder,

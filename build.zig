@@ -164,13 +164,11 @@ fn installFuzztest(b: *std.Build, config: Dependency.Config) FuzztestArtifacts {
         .fuzztest_builder = null,
     };
 
-    if (config.target.result.os.tag == .windows) {
-        return artifacts;
+    if (FuzztestBuilder.canFuzz(config.target)) {
+        const fuzztest: *FuzztestBuilder = .build(b, abseil, gtest, re2_dep);
+        b.installArtifact(fuzztest.fuzztest);
+        artifacts.fuzztest_builder = fuzztest;
     }
-
-    const fuzztest: *FuzztestBuilder = .build(b, abseil, gtest, re2_dep);
-    b.installArtifact(fuzztest.fuzztest);
-    artifacts.fuzztest_builder = fuzztest;
     return artifacts;
 }
 
