@@ -28,7 +28,7 @@ pub fn canFuzz(target: std.Build.ResolvedTarget) bool {
 
 pub fn build(
     b: *std.Build,
-    absl: *AbseilBuilder,
+    abseil: *AbseilBuilder,
     gtest: *GTestBuilder,
     re2: Dependency,
 ) *Self {
@@ -39,12 +39,12 @@ pub fn build(
         .b = b,
         .metadata = .{
             .upstream = upstream,
-            .config = absl.metadata.config,
+            .config = abseil.metadata.config,
             .root = upstream.path(""),
         },
     };
 
-    self.fuzztest = self.buildCore(absl, re2, gtest);
+    self.fuzztest = self.buildCore(abseil, re2, gtest);
     self.fuzztest_gtest_main = self.buildGtestMain(gtest);
 
     return self;
@@ -52,7 +52,7 @@ pub fn build(
 
 fn buildCore(
     self: *const Self,
-    absl: *AbseilBuilder,
+    abseil: *AbseilBuilder,
     re2: Dependency,
     gtest: *GTestBuilder,
 ) Artifact {
@@ -61,19 +61,20 @@ fn buildCore(
     mod.addIncludePath(re2.upstream.path(""));
 
     const link_libs = [_]Artifact{
-        absl.synchronization.synchronization,
-        absl.strings.cord,
-        absl.container.raw_hash_set,
-        absl.status.statusor,
-        absl.log.message,
-        absl.log.globals,
-        absl.random.seed_sequences,
-        absl.random.distributions,
-        absl.debugging.stacktrace,
+        abseil.synchronization.synchronization,
+        abseil.strings.cord,
+        abseil.container.raw_hash_set,
+        abseil.status.statusor,
+        abseil.log.message,
+        abseil.log.globals,
+        abseil.random.seed_sequences,
+        abseil.random.distributions,
+        abseil.debugging.stacktrace,
         re2.artifact,
         gtest.gtest,
-        absl.debugging.failure_signal_handler,
-        absl.flags.parse,
+        abseil.debugging.failure_signal_handler,
+        abseil.flags.parse,
+        abseil.base.base,
     };
 
     const lib = b.addLibrary(.{

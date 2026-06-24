@@ -34,6 +34,7 @@ pub const Base = struct {
     spinlock_wait: Artifact = undefined,
     throw_delegate: Artifact = undefined,
     strerror: Artifact = undefined,
+    /// Link against this to get all abseil headers
     base: Artifact = undefined,
     malloc_internal: Artifact = undefined,
     tracing_internal: Artifact = undefined,
@@ -252,6 +253,10 @@ pub fn build(self: *Self) void {
             self.base.raw_logging_internal,
             self.base.spinlock_wait,
         },
+    });
+
+    self.base.base.installHeadersDirectory(self.metadata.root, "absl", .{
+        .include_extensions = &.{ ".h", ".inc" },
     });
 
     // Tier 2: depend on base
@@ -920,10 +925,6 @@ fn addLibrary(self: *const Self, config: struct {
     const lib = b.addLibrary(.{
         .name = b.fmt("absl_{s}", .{config.name}),
         .root_module = mod,
-    });
-
-    lib.installHeadersDirectory(config.root, "absl", .{
-        .include_extensions = &.{ ".h", ".inc" },
     });
     return lib;
 }
