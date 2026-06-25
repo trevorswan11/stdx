@@ -61,9 +61,9 @@ TEST_CASE("Blank string check") {
 }
 
 TEST_CASE("String view conversion") {
-    const auto*            c_str = "Hello, World!";
-    const std::string_view view  = c_str;
-    const std::string      str   = c_str;
+    const auto*            c_str{"Hello, World!"};
+    const std::string_view view{c_str};
+    const std::string      str{c_str};
 
     CHECK(string::to_view(c_str) == string::to_view(c_str));
     CHECK(string::to_view(c_str) == string::to_view(view));
