@@ -54,3 +54,7 @@
 # v1.4.3
 
 - Add spdlog as an installable library and link it against stdx by default
+
+# v1.4.4
+
+- Fix an issue where the intrumentor could segfault on actually valid frees (very uncommon)

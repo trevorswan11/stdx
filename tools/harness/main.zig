@@ -286,11 +286,26 @@ const Instrumentor = struct {
 export fn alloc(size: usize) callconv(.c) ?*anyopaque {
     if (!instrumentor_active) {
         @branchHint(.unlikely);
-        return Instrumentor.internal_allocator.rawAlloc(
-            size,
-            .of(std.c.max_align_t),
-            @returnAddress(),
+
+        // Always allocate with a header so `deallocInternal` can safely read it backwards.
+        const alignment = comptime @max(16, @alignOf(std.c.max_align_t));
+        const total = size + alignment + Instrumentor.header_size;
+
+        const mem = Instrumentor.internal_allocator.alloc(u8, total) catch return null;
+        const base_ptr = @intFromPtr(mem.ptr);
+        const aligned_ptr = std.mem.alignForward(
+            usize,
+            base_ptr + Instrumentor.header_size,
+            alignment,
         );
+
+        const header = @as(*Instrumentor.AllocHeader, @ptrFromInt(aligned_ptr - Instrumentor.header_size));
+        header.* = .{
+            .size = total,
+            .offset = aligned_ptr - base_ptr,
+            .requested = size,
+        };
+        return @ptrFromInt(aligned_ptr);
     }
     return instrumentor.alloc(size) catch null;
 }
@@ -307,11 +322,7 @@ fn deallocInternal(ptr: *anyopaque) void {
         }
     }
 
-    Instrumentor.internal_allocator.rawFree(
-        @as([*]u8, @ptrCast(ptr))[0..0],
-        .of(std.c.max_align_t),
-        @returnAddress(),
-    );
+    @panic("Heap corruption or invalid uninstrumented free detected");
 }
 
 export fn dealloc(ptr: ?*anyopaque) callconv(.c) void {
