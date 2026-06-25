@@ -96,7 +96,6 @@ template <typename T, typename... Args>
     return box<T>::make(std::forward<Args>(args)...);
 }
 
-// If you find yourself using this, think really hard about the decisions that led you here...
 template <typename T> using rc = std::shared_ptr<T>;
 template <typename T, typename... Args>
 [[nodiscard]] constexpr auto make_rc(Args&&... args) -> rc<T> {

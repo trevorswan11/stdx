@@ -42,6 +42,12 @@ namespace stdx {
     Type(Type&&) noexcept                    = default; \
     auto operator=(Type&&) noexcept -> Type& = default;
 
+#define MAKE_PINNED(Type)                              \
+    Type(const Type&)                        = delete; \
+    auto operator=(const Type&)->Type&       = delete; \
+    Type(Type&&) noexcept                    = delete; \
+    auto operator=(Type&&) noexcept -> Type& = delete;
+
 #define CONCAT_INNER(a, b) a##b
 #define CONCAT(a, b) CONCAT_INNER(a, b)
 
