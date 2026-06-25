@@ -24,6 +24,7 @@ pub const fmt = @import("third-party/fmt.zig");
 pub const catch2 = @import("third-party/catch2.zig");
 pub const zlib = @import("third-party/zlib.zig");
 pub const zstd = @import("third-party/zstd.zig");
+pub const spdlog = @import("third-party/spdlog.zig");
 pub const libarchive = @import("third-party/libarchive.zig");
 pub const re2 = @import("third-party/fuzztest/re2.zig");
 
@@ -270,10 +271,21 @@ fn buildStdx(b: *std.Build, config: struct {
         gsl_inc,        nlohmann_json_inc,
     };
 
-    const fmt_dep = fmt.build(b, .{
+    const dep_config: Dependency.Config = .{
         .target = target,
         .optimize = config.optimize,
-    });
+    };
+
+    const dependecies = [_]Dependency{
+        fmt.build(b, dep_config),
+        spdlog.build(b, dep_config),
+    };
+
+    var link_libraries: ArrayList(*std.Build.Step.Compile) = .init(b);
+    for (dependecies) |dep| {
+        b.installArtifact(dep.artifact);
+        link_libraries.append(dep.artifact);
+    }
 
     // Shared core functionality
     const libstdx = b.addLibrary(.{
@@ -288,9 +300,10 @@ fn buildStdx(b: *std.Build, config: struct {
                 .flags = config.cxx_flags,
             },
             .config_headers = &.{config_h},
-            .link_libraries = &.{fmt_dep.artifact},
+            .link_libraries = link_libraries.wrapped.items,
         }),
     });
+    for (dependecies) |dep| libstdx.installLibraryHeaders(dep.artifact);
 
     libstdx.installConfigHeader(config_h);
     for (system_includes) |system_include| {
@@ -299,7 +312,6 @@ fn buildStdx(b: *std.Build, config: struct {
             .exclude_extensions = &.{".txt"},
         });
     }
-    libstdx.installLibraryHeaders(fmt_dep.artifact);
     libstdx.installHeadersDirectory(b.path(ProjectPaths.include), "", .{
         .include_extensions = &.{".hh"},
     });

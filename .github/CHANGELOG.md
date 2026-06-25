@@ -50,3 +50,7 @@
 - Add pop_back, erase, and resize to vector alongside some utility (front, back) helpers
 - Add object_at to memory
 - Add DISCARD macro for (void) pattern
+
+# v1.4.3
+
+- Add spdlog as an installable library and link it against stdx by default

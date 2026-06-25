@@ -13,6 +13,7 @@ pub const base_cxx_flags = [_][]const u8{
     "-Wshadow",
     "-Wno-gnu-statement-expression",
     "-Wno-gnu-statement-expression-from-macro-expansion",
+    "-DSPDLOG_COMPILED_LIB",
 };
 
 pub const ExecutableBehavior = union(enum) {

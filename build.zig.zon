@@ -1,6 +1,6 @@
 .{
     .name = .stdx,
-    .version = "1.4.2",
+    .version = "1.4.3",
     .minimum_zig_version = "0.16.0",
     .fingerprint = 0x5479474f83add874,
     .dependencies = .{
@@ -19,6 +19,10 @@
         .fmt = .{
             .url = "https://github.com/fmtlib/fmt/archive/refs/tags/12.1.0.tar.gz",
             .hash = "N-V-__8AAPE8LgDK9Qn7tjvCIu78z8Y8e6SW8WIUCAQIszuf",
+        },
+        .spdlog = .{
+            .url = "https://github.com/gabime/spdlog/archive/refs/tags/v1.17.0.tar.gz",
+            .hash = "N-V-__8AALV4EgBbl10jtpTgXbAMeWyE5t24VkpFyu6JKaWR",
         },
         .unordered_dense = .{
             .url = "https://github.com/martinus/unordered_dense/archive/refs/tags/v4.8.1.tar.gz",

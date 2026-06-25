@@ -58,6 +58,7 @@ To reduce shared complexity across different projects, stdx provides the followi
 - [cppcheck](https://cppcheck.sourceforge.io/) is compiled from source for static analysis. It is licensed under the GNU GPLv3, but the associated compiled artifacts are neither linked with output artifacts nor shipped with releases.
 - [magic_enum](https://github.com/Neargye/magic_enum) is used as a utility to reflect on enum values. Is is licensed under the permissive MIT License.
 - [fmt](https://github.com/fmtlib/fmt) is used as a formatting utility in place of std::format, which is not as performant or feature-full. Is is licensed under the permissive MIT License.
+- [spdlog](https://github.com/gabime/spdlog) is used as a logging utility that depends on [fmt](https://github.com/fmtlib/fmt). Is is licensed under the permissive MIT License.
 - [unordered_dense](https://github.com/martinus/unordered_dense) provides a vastly improved hash map/set implementation that is used over the inefficient C++ standard implementation. Is is licensed under the permissive MIT License.
 - [gsl](https://github.com/microsoft/gsl) is used for enforcing best practices and supporting the standard template library. Is is licensed under the permissive MIT License.
 - [nlohmann/json](https://github.com/nlohmann/json) provides a modern json system. Is is licensed under the permissive MIT License.
