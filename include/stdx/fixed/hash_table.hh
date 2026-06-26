@@ -596,13 +596,12 @@ class hash_table {
 } // namespace detail
 
 // A fixed-size zero-allocation container supporting hash-map operations
-template <
-    typename Key,
-    typename Value,
-    usize Capacity,
-    typename Hash = std::conditional_t<StringLike<Key>, hash::crc::hash<Key>, hash::hash<Key>>,
-    typename Compare =
-        std::conditional_t<StringLike<Key>, hash::string_transparent_eq<Key>, std::equal_to<Key>>>
+template <typename Key,
+          typename Value,
+          usize Capacity,
+          typename Hash = std::conditional_t<StringLike<Key>, crc::hash<Key>, hash<Key>>,
+          typename Compare =
+              std::conditional_t<StringLike<Key>, string_transparent_eq<Key>, std::equal_to<Key>>>
 using hash_map = detail::hash_table<Key, Value, ceil_power_of_two(Capacity), Hash, Compare>;
 
 // Construct a hash map from a list of pairs
@@ -619,12 +618,11 @@ template <InsertablePair... Pairs>
 }
 
 // A fixed-size zero-allocation container supporting hash-set operations
-template <
-    typename Key,
-    usize Capacity,
-    typename Hash = std::conditional_t<StringLike<Key>, hash::crc::hash<Key>, hash::hash<Key>>,
-    typename Compare =
-        std::conditional_t<StringLike<Key>, hash::string_transparent_eq<Key>, std::equal_to<Key>>>
+template <typename Key,
+          usize Capacity,
+          typename Hash = std::conditional_t<StringLike<Key>, crc::hash<Key>, hash<Key>>,
+          typename Compare =
+              std::conditional_t<StringLike<Key>, string_transparent_eq<Key>, std::equal_to<Key>>>
 using hash_set = detail::hash_table<Key, void, ceil_power_of_two(Capacity), Hash, Compare>;
 
 // Construct a hash set from a list of keys

@@ -36,6 +36,9 @@ concept DefaultConstructible = std::is_default_constructible_v<T>;
 template <typename T>
 concept CopyConstructible = std::is_copy_constructible_v<T>;
 
+template <typename E>
+concept Enum = std::is_enum_v<E>;
+
 template <typename T>
 concept ScopedEnum = std::is_scoped_enum_v<T>;
 

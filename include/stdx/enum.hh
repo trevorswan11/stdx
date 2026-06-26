@@ -2,44 +2,41 @@
 
 #include <array>
 #include <concepts>
-#include <type_traits>
 
 #include <magic_enum/magic_enum.hpp>
 
+#include "stdx/type_traits.hh"
 #include "stdx/types.hh"
 
 namespace stdx {
 
-template <typename Enum>
-concept ValidEnum = std::is_enum_v<Enum>;
-
 using magic_enum::enum_value;
 
 // Returns the minimum value of the present enumerations as the value
-template <ValidEnum E> consteval auto enum_min_value() { return enum_value<E>(0); }
+template <Enum E> consteval auto enum_min_value() { return enum_value<E>(0); }
 
 // Returns the minimum value of the present enumerations as the underlying value
-template <ValidEnum E> consteval auto enum_min_underlying() {
+template <Enum E> consteval auto enum_min_underlying() {
     return magic_enum::enum_integer(enum_min_value<E>());
 }
 
 // Returns the maximum value of the present enumerations as the value
-template <ValidEnum E> consteval auto enum_max_value() {
+template <Enum E> consteval auto enum_max_value() {
     return enum_value<E>(magic_enum::enum_count<E>() - 1);
 }
 
 // Returns the maximum value of the present enumerations as the underlying value
-template <ValidEnum E> consteval auto enum_max_underlying() {
+template <Enum E> consteval auto enum_max_underlying() {
     return magic_enum::enum_integer(enum_max_value<E>());
 }
 
 // Requires that the enum is in an exclusively bounded range of magic enum bounds
 //
 // This prevents possible bugs and should be fixed by adjusting defines in `build.zig`
-template <typename Enum>
-concept BoundedEnum = ValidEnum<Enum> && requires {
-    enum_min_underlying<Enum>() > MAGIC_ENUM_RANGE_MIN &&
-        enum_max_underlying<Enum>() < MAGIC_ENUM_RANGE_MAX;
+template <typename E>
+concept BoundedEnum = Enum<E> && requires {
+    enum_min_underlying<E>() > MAGIC_ENUM_RANGE_MIN &&
+        enum_max_underlying<E>() < MAGIC_ENUM_RANGE_MAX;
 };
 
 // Returns an inclusive range of enum values. Requires `lower < higher`

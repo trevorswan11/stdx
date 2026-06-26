@@ -29,4 +29,12 @@ TEST_CASE("Box release") {
     delete raw;
 }
 
+TEST_CASE("Sizes") {
+    using namespace size_literals;
+    CHECK(1_KiB == 1'024);
+    CHECK(sizes::kib(1UZ) == 1'024);
+    CHECK(1_MiB == 1'024ULL * 1'024ULL);
+    CHECK(sizes::mib(1UZ) == 1'024ULL * 1'024ULL);
+}
+
 } // namespace stdx::tests

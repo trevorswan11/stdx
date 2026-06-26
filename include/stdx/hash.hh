@@ -8,9 +8,10 @@
 #include <ankerl/unordered_dense.h>
 
 #include "stdx/string.hh"
+#include "stdx/type_traits.hh"
 #include "stdx/types.hh"
 
-namespace stdx::hash {
+namespace stdx {
 
 namespace wyhash {
 
@@ -118,8 +119,13 @@ template <typename T> struct hash {
 
 template <typename T> struct hash {
     [[nodiscard]] static constexpr auto operator()(const T& t) noexcept -> u64 {
-        if constexpr (std::is_convertible_v<T, u64>) { return wyhash::hash(static_cast<u64>(t)); }
-        return ankerl::unordered_dense::hash<T>{}(t);
+        if constexpr (std::is_convertible_v<T, u64>) {
+            return wyhash::hash(static_cast<u64>(t));
+        } else if constexpr (Enum<T>) {
+            return hash<std::underlying_type_t<T>>{}(std::to_underlying(t));
+        } else {
+            return ankerl::unordered_dense::hash<T>{}(t);
+        }
     }
 };
 
@@ -176,4 +182,4 @@ class hasher {
     u64 hash_{0xA0761D6478BD642FULL};
 };
 
-} // namespace stdx::hash
+} // namespace stdx

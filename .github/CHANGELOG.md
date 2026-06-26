@@ -58,3 +58,7 @@
 # v1.4.4
 
 - Fix an issue where the intrumentor could segfault on actually valid frees (very uncommon)
+
+# v1.4.5
+
+- Flatten `std::hash` namespace into `stdx`'s root

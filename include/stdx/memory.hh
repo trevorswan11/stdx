@@ -1,5 +1,6 @@
 #pragma once
 
+#include <concepts>
 #include <cstddef>
 #include <memory>
 #include <new>
@@ -9,6 +10,7 @@
 #include "stdx/assert.hh"
 #include "stdx/type_traits.hh"
 #include "stdx/types.hh"
+#include "stdx/utility.hh"
 
 namespace stdx {
 
@@ -22,6 +24,28 @@ constexpr auto operator""_TiB(unsigned long long int x) noexcept -> u64 { return
 constexpr auto operator""_PiB(unsigned long long int x) noexcept -> u64 { return 1'024_TiB * x; }
 
 } // namespace size_literals
+
+namespace sizes {
+
+#define NAMEOF(name) name
+
+#define MAKE_SIZE_FN(name, literal)                                \
+    template <std::unsigned_integral U>                            \
+    [[nodiscard]] constexpr auto NAMEOF(name)(U x) noexcept -> U { \
+        using namespace size_literals;                             \
+        return static_cast<U>(x * CONCAT(1, literal));             \
+    }
+
+MAKE_SIZE_FN(kib, _KiB)
+MAKE_SIZE_FN(mib, _MiB)
+MAKE_SIZE_FN(gib, _GiB)
+MAKE_SIZE_FN(tib, _TiB)
+MAKE_SIZE_FN(pib, _PiB)
+
+#undef MAKE_SIZE_FN
+#undef NAMEOF
+
+} // namespace sizes
 
 // Interprets a region of raw bytes as a trivially-copyable, implicit-lifetime type T
 template <TriviallyCopyable T> [[nodiscard]] auto object_at(std::byte* bytes) noexcept -> T* {
