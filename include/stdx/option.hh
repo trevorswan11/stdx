@@ -35,7 +35,7 @@ template <ScopedEnum E> struct nullable<E> {
 };
 
 using none_t = std::nullopt_t;
-constexpr none_t none{std::nullopt}; // NOLINT
+constexpr none_t none{std::nullopt};
 
 namespace detail {
 

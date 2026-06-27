@@ -36,21 +36,19 @@ concept UniqueTypes = detail::unique_types_v<Ts...>;
 // Non-constexpr capable yet efficient (compilation performance) `std::variant` alternative
 //
 // This is not compatible with the standard's definition of variant.
-//
-// You might argue that I should just use `std::variant` because this is just a bug waiting to
-// happen, but I would say that the gains from doing this outweigh the headaches of a few bugs down
-// the line. The adoption of this data structure brought the size of the compiler's static library
-// (which relies heavily on variants and `std::visit`) from 173M to 58M on macOS (in debug mode).
-//
-// If I catch any usage of `std::variant` I will lose my marbles...
-//
-// Inspired by: https://github.com/groundswellaudio/swl-variant
 template <typename... Ts>
     requires(sizeof...(Ts) > 0 && UniqueTypes<Ts...>)
 class variant {
+    // You might argue that I should just use `std::variant` because this is just a bug waiting to
+    // happen, but I would say that the gains from doing this outweigh the headaches of a few bugs
+    // down the line. The adoption of this data structure brought the size of the compiler's static
+    // library (which relies heavily on variants and `std::visit`) from 173M to 58M on macOS (in
+    // debug mode).
+    //
+    // Inspired by: https://github.com/groundswellaudio/swl-variant
   public:
     static constexpr auto N{sizeof...(Ts)};
-    using index_type = min_uint_for_bits<min_bits<N>>;
+    using index_type = min_uint_for_bits<min_bits<N>()>;
 
   private:
     template <usize I> using nth = __type_pack_element<I, Ts...>;

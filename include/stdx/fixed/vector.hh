@@ -16,7 +16,9 @@
 namespace stdx::fixed {
 
 // A fixed-size zero-allocation container with a vector-like interface
-template <typename Item, usize Capacity> class vector {
+template <typename Item, usize Capacity>
+    requires(Capacity > 0)
+class vector {
   public:
     using value_type      = Item;
     using size_type       = usize;

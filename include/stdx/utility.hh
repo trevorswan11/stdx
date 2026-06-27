@@ -57,18 +57,21 @@ namespace stdx {
 
 namespace detail {
 
-template <typename... Args>
-constexpr auto todo_impl(std::source_location loc, [[maybe_unused]] Args&&... args) noexcept
-    -> void {
+template <typename... Args> constexpr auto todo_impl(std::source_location loc) noexcept -> void {
     fmt::println(std::cerr, "TODO: {}:{}:{}", loc.file_name(), loc.line(), loc.column());
     std::terminate();
 }
 
+template <typename... Args> constexpr auto noop([[maybe_unused]] Args&&... args) noexcept -> void {}
+
 } // namespace detail
 
-#define TODO(...) ::stdx::detail::todo_impl(std::source_location::current(), __VA_ARGS__);
+// Provide any variables as variadic args to silence unused warnings and errors
+#define TODO(...)                      \
+    ::stdx::detail::noop(__VA_ARGS__); \
+    ::stdx::detail::todo_impl(std::source_location::current());
 
 // Discards the result of an expression without compiling it out
-#define DISCARD(expression) (void)(expression)
+#define DISCARD(expression) ::stdx::detail::noop(expression)
 
 } // namespace stdx

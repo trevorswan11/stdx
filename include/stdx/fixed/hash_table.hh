@@ -208,7 +208,7 @@ class hash_table_iterator {
 // Heavily inspired by Zig's hash map implementation and trevor's C version:
 // https://github.com/trevorswan11/ghoti/blob/4577f3279f5ab09e32a13b8cacb044da686e64bd/src/util/containers/hash_map.c
 template <typename Key, typename Value, usize Capacity, typename Hash, typename Equal>
-    requires(is_power_of_two(Capacity) && !std::same_as<void, Key>)
+    requires(Capacity > 0 && is_power_of_two(Capacity) && !std::same_as<void, Key>)
 class hash_table {
   public:
     static constexpr auto is_map = !std::same_as<void, Value>;

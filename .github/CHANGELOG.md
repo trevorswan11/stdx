@@ -62,3 +62,9 @@
 # v1.4.5
 
 - Flatten `std::hash` namespace into `stdx`'s root
+
+# v1.4.6
+
+- Add Capacity constraints on custom data structures
+- Make math's `min_bits` a helper function rather than a IILE property
+- Adjust `DISCARD` utility to properly deal with result types

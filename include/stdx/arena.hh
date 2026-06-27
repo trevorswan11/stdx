@@ -21,7 +21,9 @@ constexpr auto DEFAULT_ARENA_BLOCK_SIZE{[] -> usize {
 }()};
 
 // Do not free returned memory directly!
-template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE> class arena {
+template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE>
+    requires(BlockSize > 0)
+class arena {
   public:
     arena() noexcept = default;
     ~arena() { clear(); }

@@ -32,8 +32,7 @@ template <std::unsigned_integral U>
 }
 
 // The minimum number of bits required to hold the provided value
-template <auto U>
-constexpr auto min_bits = [] -> auto {
+template <auto U> consteval auto min_bits() -> usize {
     auto  value{U};
     usize bits{0};
     while (value > 0) {
@@ -41,7 +40,7 @@ constexpr auto min_bits = [] -> auto {
         value >>= 1;
     }
     return bits == 0 ? 1 : bits;
-}();
+}
 
 // https://stackoverflow.com/questions/74244055/in-c-get-smallest-integer-type-that-can-hold-given-amount-of-bits
 template <usize Bits>

@@ -6,6 +6,7 @@
 #include "stdx/option.hh"
 #include "stdx/result.hh"
 #include "stdx/types.hh"
+#include "stdx/utility.hh"
 
 namespace stdx::tests {
 
@@ -32,6 +33,11 @@ TEST_CASE("Try macro usage") {
     const auto err{unwrap()};
     REQUIRE(err);
     CHECK(err->error() == str);
+}
+
+TEST_CASE("Discarded results") {
+    const auto result_maker = [] -> result<i32, std::string_view> { return 1; };
+    DISCARD(result_maker());
 }
 
 } // namespace stdx::tests
