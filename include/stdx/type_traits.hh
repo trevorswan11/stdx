@@ -58,4 +58,7 @@ concept Const = std::is_const_v<std::remove_reference_t<T>>;
 template <typename Self, typename T>
 using const_dispatch_t = std::conditional_t<Const<Self>, const T, T>;
 
+template <typename T>
+concept StandardLayout = std::is_standard_layout_v<T>;
+
 } // namespace stdx

@@ -77,3 +77,7 @@
 # v1.5.1
 
 - Add default constructors for `box` types
+
+# v1.5.2
+
+- Add standard layout concept to `type_traits`
