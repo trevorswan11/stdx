@@ -68,3 +68,8 @@
 - Add Capacity constraints on custom data structures
 - Make math's `min_bits` a helper function rather than a IILE property
 - Adjust `DISCARD` utility to properly deal with result types
+
+# v1.5.0
+
+- Adds `T[]` support in the `stdx::box` helper class
+- Updates `TODO` to have an `unreachable` call to tell the compiler that control flow terminates

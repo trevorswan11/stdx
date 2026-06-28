@@ -67,9 +67,10 @@ template <typename... Args> constexpr auto noop([[maybe_unused]] Args&&... args)
 } // namespace detail
 
 // Provide any variables as variadic args to silence unused warnings and errors
-#define TODO(...)                      \
-    ::stdx::detail::noop(__VA_ARGS__); \
-    ::stdx::detail::todo_impl(std::source_location::current());
+#define TODO(...)                                               \
+    ::stdx::detail::noop(__VA_ARGS__);                          \
+    ::stdx::detail::todo_impl(std::source_location::current()); \
+    std::unreachable()
 
 // Discards the result of an expression without compiling it out
 #define DISCARD(expression) ::stdx::detail::noop(expression)
