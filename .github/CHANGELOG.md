@@ -73,3 +73,7 @@
 
 - Adds `T[]` support in the `stdx::box` helper class
 - Updates `TODO` to have an `unreachable` call to tell the compiler that control flow terminates
+
+# v1.5.1
+
+- Add default constructors for `box` types

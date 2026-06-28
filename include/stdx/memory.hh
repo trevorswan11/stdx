@@ -72,6 +72,7 @@ template <typename T, typename... Args>
 // All methods besides constructors and factories ASSERT this invariant.
 template <typename T, typename D = std::default_delete<T>> class box {
   public:
+    constexpr box() noexcept = default;
     explicit box(nullable_box<T, D>&& ptr) : ptr_{std::move(ptr)} {
         ASSERT(ptr_, "Box cannot be created from nullptr");
     }
@@ -117,6 +118,7 @@ template <typename T, typename D = std::default_delete<T>> class box {
 
 template <typename T, typename D> class box<T[], D> {
   public:
+    constexpr box() noexcept = default;
     explicit box(nullable_box<T[], D>&& ptr) : ptr_{std::move(ptr)} {
         ASSERT(ptr_, "Box cannot be created from nullptr");
     }
