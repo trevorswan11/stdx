@@ -8,7 +8,6 @@
 #include <utility>
 
 #include "stdx/assert.hh"
-#include "stdx/type_traits.hh"
 #include "stdx/types.hh"
 #include "stdx/utility.hh"
 
@@ -47,13 +46,13 @@ MAKE_SIZE_FN(pib, _PiB)
 
 } // namespace sizes
 
-// Interprets a region of raw bytes as a trivially-copyable, implicit-lifetime type T
-template <TriviallyCopyable T> [[nodiscard]] auto object_at(std::byte* bytes) noexcept -> T* {
+// Returns a pointer to the object of type T constructed within the given byte storage
+template <typename T> [[nodiscard]] auto object_at(std::byte* bytes) noexcept -> T* {
     return std::launder(reinterpret_cast<T*>(bytes));
 }
 
-template <TriviallyCopyable T>
-[[nodiscard]] auto object_at(const std::byte* bytes) noexcept -> const T* {
+// Returns a constant pointer to the object of type T constructed within the given byte storage
+template <typename T> [[nodiscard]] auto object_at(const std::byte* bytes) noexcept -> const T* {
     return std::launder(reinterpret_cast<const T*>(bytes));
 }
 

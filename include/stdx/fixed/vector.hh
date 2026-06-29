@@ -120,16 +120,16 @@ class vector {
     // Returns an iterator to the element that followed the erased one (or end())
     constexpr auto erase(iterator pos) -> iterator {
         ASSERT(pos >= begin() && pos < end(), "erase position out of range");
-        for (iterator it{pos}; it + 1 != end(); ++it) { *it = std::move(*(it + 1)); }
+        std::move(pos + 1, end(), pos);
         std::destroy_at(data() + --size_);
         return pos;
     }
 
     // Grows (constructing and copying a value) or shrinks the vector
     //
-    // The value is never constructed if shrinking
+    // The value is never constructed if shrinking or if the size if unchanging
     template <typename... Args> constexpr auto resize(usize new_size, Args&&... args) -> void {
-        if (size_ > new_size) {
+        if (size_ >= new_size) {
             while (size_ > new_size) { pop_back(); }
             return;
         }
@@ -186,7 +186,7 @@ class vector {
         // Manually destroy the moved-from object after moving it
         for (usize i{smaller_size}; i < larger_size; ++i) {
             smaller.emplace_back(std::move(larger[i]));
-            std::destroy_at(data() + i);
+            std::destroy_at(larger.data() + i);
         }
 
         smaller.size_ = larger_size;

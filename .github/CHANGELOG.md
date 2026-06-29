@@ -81,3 +81,9 @@
 # v1.5.2
 
 - Add standard layout concept to `type_traits`
+
+# v1.5.3
+
+- Unrestrict `object_at` to take any type `T`
+- Update `variant` to use `object_at` instead of duplicated launder + reinterpret
+- Use std algorithm for fixed::vector erase

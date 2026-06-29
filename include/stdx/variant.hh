@@ -1,12 +1,12 @@
 #pragma once
 
 #include <cstddef>
-#include <new>
 #include <type_traits>
 #include <utility>
 
 #include "stdx/assert.hh"
 #include "stdx/math.hh"
+#include "stdx/memory.hh"
 #include "stdx/option.hh"
 #include "stdx/type_traits.hh"
 #include "stdx/types.hh"
@@ -121,9 +121,9 @@ class variant {
     [[nodiscard]] auto as(this Self&& self) noexcept -> decltype(auto) {
         ASSERT(self.template is<T>(), "Variant::as<T> called on inactive alternative");
         if constexpr (RValueReference<Self>) {
-            return std::move(*self.template as_raw<T>());
+            return std::move(*object_at<T>(self.storage_));
         } else {
-            return *self.template as_raw<T>();
+            return *object_at<T>(self.storage_);
         }
     }
 
@@ -131,7 +131,7 @@ class variant {
     template <typename T, typename Self>
     [[nodiscard]] auto as_opt(this Self& self) noexcept -> option<const_dispatch_t<Self, T>&> {
         if (!self.template is<T>()) { return none; }
-        return {self.template as_raw<T>()};
+        return {object_at<T>(self.storage_)};
     }
 
     // Safely cleans up the active type before constructing a new type in place
@@ -164,34 +164,30 @@ class variant {
         if (index_ != other.index_) { return false; }
         auto result{false};
         [&]<usize... Is>(std::index_sequence<Is...>) noexcept -> void {
-            (void)(... ||
-                   (index_ == Is ? (result = (*as_raw<nth<Is>>() == *other.as_raw<nth<Is>>()), true)
-                                 : false));
+            (void)(... || (index_ == Is ? (result = (*object_at<nth<Is>>(storage_) ==
+                                                     *object_at<nth<Is>>(other.storage_)),
+                                           true)
+                                        : false));
         }(std::index_sequence_for<Ts...>{});
         return result;
     }
 
   private:
-    // Retrieve an unchecked properly typed pointer into the underlying storage
-    template <typename T, typename Self>
-    [[nodiscard]] auto as_raw(this Self&& self) noexcept -> auto* {
-        // https://en.cppreference.com/cpp/utility/launder
-        return std::launder(reinterpret_cast<const_dispatch_t<Self, T>*>(self.storage_));
-    }
-
     auto destroy_active() noexcept -> void {
         if (index_ >= static_cast<index_type>(N)) { return; }
         [this]<usize... Is>(std::index_sequence<Is...>) noexcept -> void {
-            (void)(... || (index_ == Is ? (as_raw<nth<Is>>()->~nth<Is>(), true) : false));
+            (void)(... ||
+                   (index_ == Is ? (object_at<nth<Is>>(storage_)->~nth<Is>(), true) : false));
         }(std::index_sequence_for<Ts...>{});
     }
 
     auto copy_construct(const variant& other) noexcept(nothrow_copy) -> void {
         [&]<usize... Is>(std::index_sequence<Is...>) noexcept(nothrow_copy) -> void {
-            (void)(... ||
-                   (other.index_ == Is
-                        ? (::new (storage_) nth<Is>{*other.as_raw<nth<Is>>()}, index_ = Is, true)
-                        : false));
+            (void)(... || (other.index_ == Is
+                               ? (::new (storage_) nth<Is>{*object_at<nth<Is>>(other.storage_)},
+                                  index_ = Is,
+                                  true)
+                               : false));
         }(std::index_sequence_for<Ts...>{});
     }
 
@@ -206,11 +202,12 @@ class variant {
     // Also destroys the moved-from object
     auto move_construct(variant&& other) noexcept(nothrow_move) -> void {
         [&]<usize... Is>(std::index_sequence<Is...>) noexcept(nothrow_move) -> void {
-            (void)(... || (other.index_ == Is
-                               ? (::new (storage_) nth<Is>{std::move(*other.as_raw<nth<Is>>())},
-                                  index_ = Is,
-                                  true)
-                               : false));
+            (void)(... ||
+                   (other.index_ == Is
+                        ? (::new (storage_) nth<Is>{std::move(*object_at<nth<Is>>(other.storage_))},
+                           index_ = Is,
+                           true)
+                        : false));
         }(std::index_sequence_for<Ts...>{});
         other.destroy_active();
         other.index_ = static_cast<index_type>(N);
@@ -226,10 +223,10 @@ class variant {
 
     template <usize I = 0, typename Self, typename Visitor>
     static auto visit_impl(Self&& self, Visitor&& vis)
-        -> decltype(std::forward<Visitor>(vis)(*self.template as_raw<nth<0>>())) {
+        -> decltype(std::forward<Visitor>(vis)(*object_at<nth<0>>(self.storage_))) {
         if constexpr (I < N) {
             if (self.index_ == static_cast<index_type>(I)) {
-                return std::forward<Visitor>(vis)(*self.template as_raw<nth<I>>());
+                return std::forward<Visitor>(vis)(*object_at<nth<I>>(self.storage_));
             }
             return visit_impl<I + 1>(std::forward<Self>(self), std::forward<Visitor>(vis));
         }
