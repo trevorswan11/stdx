@@ -341,9 +341,9 @@ class hash_table {
         size_ -= 1;
     }
 
-    [[nodiscard]] constexpr auto empty() const noexcept -> bool { return size_ == 0; }
-    [[nodiscard]] constexpr auto size() const noexcept -> usize { return size_; }
-    [[nodiscard]] constexpr auto capacity() const noexcept -> usize { return Capacity; }
+    [[nodiscard]] constexpr auto        empty() const noexcept -> bool { return size_ == 0; }
+    [[nodiscard]] constexpr auto        size() const noexcept -> usize { return size_; }
+    [[nodiscard]] static constexpr auto capacity() noexcept -> usize { return Capacity; }
 
     template <typename Self> [[nodiscard]] constexpr auto begin(this Self&& self) noexcept {
         return hash_table_iterator<std::remove_reference_t<Self>, Key, Value, Capacity>{self, 0};

@@ -87,3 +87,7 @@
 - Unrestrict `object_at` to take any type `T`
 - Update `variant` to use `object_at` instead of duplicated launder + reinterpret
 - Use std algorithm for fixed::vector erase
+
+# v1.5.4
+
+- Make `fixed::vector` and `fixed::hash_table`'s `capacity` helper a static constexpr one

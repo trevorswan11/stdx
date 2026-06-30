@@ -155,9 +155,9 @@ class vector {
         return self.data() + self.size_;
     }
 
-    [[nodiscard]] constexpr auto empty() const noexcept -> bool { return size_ == 0; }
-    [[nodiscard]] constexpr auto size() const noexcept -> usize { return size_; }
-    [[nodiscard]] constexpr auto capacity() const noexcept -> usize { return Capacity; }
+    [[nodiscard]] constexpr auto        empty() const noexcept -> bool { return size_ == 0; }
+    [[nodiscard]] constexpr auto        size() const noexcept -> usize { return size_; }
+    [[nodiscard]] static constexpr auto capacity() noexcept -> usize { return Capacity; }
 
     [[nodiscard]] constexpr auto data(this auto&& self) noexcept -> auto* {
         return self.items_.data();
