@@ -1,11 +1,14 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <type_traits>
 
 #include <ankerl/unordered_dense.h>
+#include <gsl/span>
 
 #include "stdx/string.hh"
 #include "stdx/type_traits.hh"
@@ -99,10 +102,10 @@ static constexpr std::array crc_table{
     0xb40bbe37U, 0xc30c8ea1U, 0x5a05df1bU, 0x2d02ef8dU};
 
 // Pulled almost verbatim from stack overflow, just rearranged for modern C++
-[[nodiscard]] constexpr auto crc32(std::string_view str) noexcept -> u64 {
+[[nodiscard]] constexpr auto crc32(std::ranges::contiguous_range auto&& bytes) noexcept -> u32 {
     u32 crc{0xFFFFFFFF};
-    for (const auto c : str) { crc = (crc >> 8) ^ crc_table[(crc ^ static_cast<u32>(c)) & 0xFF]; }
-    return wyhash::hash(crc ^ 0xFFFFFFFF);
+    for (const auto b : bytes) { crc = (crc >> 8) ^ crc_table[(crc ^ static_cast<u32>(b)) & 0xFF]; }
+    return crc;
 }
 
 // This exists for constexpr string hashing only. `std::hash` is appropriate in other scenarios
@@ -111,7 +114,7 @@ template <typename T> struct hash {
     using is_avalanching = void;
 
     [[nodiscard]] static constexpr auto operator()(std::string_view str) noexcept -> u64 {
-        return crc32(str);
+        return wyhash::hash(crc32(str) ^ 0xFFFFFFFF);
     }
 };
 

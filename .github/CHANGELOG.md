@@ -91,3 +91,8 @@
 # v1.5.4
 
 - Make `fixed::vector` and `fixed::hash_table`'s `capacity` helper a static constexpr one
+
+# v1.5.5
+
+- Make `stdx::crc::crc32` no longer depend on wyhash
+- Make `stdx::crc::crc32` range independent assuming the values can be converted to a u32
