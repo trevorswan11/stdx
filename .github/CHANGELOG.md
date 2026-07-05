@@ -96,3 +96,7 @@
 
 - Make `stdx::crc::crc32` no longer depend on wyhash
 - Make `stdx::crc::crc32` range independent assuming the values can be converted to a u32
+
+# v1.5.6
+
+- Add `stdx::enum_ops` namespace for easy enum operation usage without needing to pollute the namespace with `MAKE_ENUM_OPERATORS`

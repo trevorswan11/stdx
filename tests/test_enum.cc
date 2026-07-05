@@ -51,4 +51,21 @@ TEST_CASE("Non-monotonic enum range") {
     for (usize i{0}; const auto v : enum_range<non_monotonic_enum>()) { CHECK(v == expected[i++]); }
 }
 
+TEST_CASE("Enum operations") {
+    using namespace enum_ops;
+    enum class simple : i8 {
+        A = 2,
+        B = 3,
+        C = 4,
+    };
+
+    auto a{simple::A};
+    CHECK(a++ == simple::A);
+    CHECK(++a == simple::C);
+    CHECK((simple::A | simple::B) == simple{2 | 3});
+    CHECK((simple::A & simple::B) == simple{2 & 3});
+    CHECK((simple::A ^ simple::B) == simple{2 ^ 3});
+    CHECK(~simple::A == simple{~2});
+}
+
 } // namespace stdx::tests

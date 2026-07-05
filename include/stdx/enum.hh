@@ -64,6 +64,52 @@ template <BoundedEnum E> consteval auto enum_range() noexcept {
     return enum_range<enum_min_value<E>(), enum_max_value<E>()>();
 }
 
+namespace enum_ops {
+
+template <ScopedEnum E> [[nodiscard]] constexpr auto operator++(E& e) noexcept -> E {
+    e = static_cast<E>(std::to_underlying(e) + 1);
+    return e;
+}
+
+template <ScopedEnum E> [[nodiscard]] constexpr auto operator++(E& e, i32) noexcept -> E {
+    E tmp{e};
+    e = static_cast<E>(std::to_underlying(e) + 1);
+    return tmp;
+}
+
+template <ScopedEnum E> constexpr auto operator|(E lhs, E rhs) -> E {
+    return static_cast<E>(std::to_underlying(lhs) | std::to_underlying(rhs));
+}
+
+template <ScopedEnum E> [[nodiscard]] constexpr auto operator|=(E& lhs, E rhs) -> E& {
+    lhs = lhs | rhs;
+    return lhs;
+}
+
+template <ScopedEnum E> [[nodiscard]] constexpr auto operator&(E lhs, E rhs) -> E {
+    return static_cast<E>(std::to_underlying(lhs) & std::to_underlying(rhs));
+}
+
+template <ScopedEnum E> [[nodiscard]] constexpr auto operator&=(E& lhs, E rhs) -> E& {
+    lhs = lhs & rhs;
+    return lhs;
+}
+
+template <ScopedEnum E> [[nodiscard]] constexpr auto operator^(E lhs, E rhs) -> E {
+    return static_cast<E>(std::to_underlying(lhs) ^ std::to_underlying(rhs));
+}
+
+template <ScopedEnum E> [[nodiscard]] constexpr auto operator^=(E& lhs, E rhs) -> E& {
+    lhs = lhs ^ rhs;
+    return lhs;
+}
+
+template <ScopedEnum E> [[nodiscard]] constexpr auto operator~(E op) -> E {
+    return static_cast<E>(~std::to_underlying(op));
+}
+
+} // namespace enum_ops
+
 // NOLINTBEGIN
 #define MAKE_ENUM_OPERATORS(EnumType)                                                    \
     constexpr auto operator|(EnumType lhs, EnumType rhs)->EnumType {                     \
