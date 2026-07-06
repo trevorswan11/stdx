@@ -130,13 +130,22 @@ class vector {
     // The value is never constructed if shrinking or if the size if unchanging
     template <typename... Args> constexpr auto resize(usize new_size, Args&&... args) -> void {
         if (size_ >= new_size) {
-            while (size_ > new_size) { pop_back(); }
+            if constexpr (TriviallyDestructible<Item>) {
+                size_ = new_size;
+            } else {
+                while (size_ > new_size) { pop_back(); }
+            }
             return;
         }
 
         ASSERT(new_size <= Capacity, "resize beyond capacity");
         Item value{std::forward<Args>(args)...};
-        while (size_ < new_size) { push_back(value); }
+        if constexpr (std::is_trivially_copyable_v<Item>) {
+            std::fill(end(), data() + new_size, value);
+            size_ = new_size;
+        } else {
+            while (size_ < new_size) { push_back(value); }
+        }
     }
 
     [[nodiscard]] constexpr explicit operator gsl::span<Item>() noexcept { return {data(), size_}; }

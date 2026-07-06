@@ -100,3 +100,9 @@
 # v1.5.6
 
 - Add `stdx::enum_ops` namespace for easy enum operation usage without needing to pollute the namespace with `MAKE_ENUM_OPERATORS`
+
+# v1.5.7
+
+- Make `stdx::fixed::vector` respect trivial types
+    - Use `std::fill` when growing if trivially copyable
+    - Update the field without popping elements when shrinking if trivially destructible
