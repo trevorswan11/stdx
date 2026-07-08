@@ -85,7 +85,9 @@ class hash_table_metadata {
     u8 raw_{0};
 };
 
-template <typename Key, typename Value, usize Capacity> class hash_table_storage {
+// Auto hash map
+template <typename Key, typename Value, usize Capacity, bool AutoRehash, usize RehashLimit>
+class hash_table_storage {
   public:
     [[nodiscard]] constexpr auto key_data(this auto&& self) noexcept -> auto* {
         return self.keys_.data();
@@ -95,20 +97,74 @@ template <typename Key, typename Value, usize Capacity> class hash_table_storage
         return self.values_.data();
     }
 
+    // `reset_churn` must be called manually
+    [[nodiscard]] constexpr auto needs_rehash() const noexcept -> bool {
+        return ++churn_ >= RehashLimit;
+    }
+
+    constexpr auto reset_churn() const noexcept -> void { churn_ = 0; }
+
   private:
     storage<Key, Capacity>   keys_;
     storage<Value, Capacity> values_;
+    mutable usize            churn_{0};
 };
 
-template <typename Key, usize Capacity> class hash_table_storage<Key, void, Capacity> {
+// Auto hash set
+template <typename Key, usize Capacity, usize RehashLimit>
+class hash_table_storage<Key, void, Capacity, true, RehashLimit> {
   public:
     [[nodiscard]] constexpr auto key_data(this auto&& self) noexcept -> auto* {
         return self.keys_.data();
     }
     [[nodiscard]] constexpr auto value_data(this auto&&) noexcept -> auto* { return nullptr; }
 
+    // `reset_churn` must be called manually
+    [[nodiscard]] constexpr auto needs_rehash() const noexcept -> bool {
+        return ++churn_ >= RehashLimit;
+    }
+
+    constexpr auto reset_churn() const noexcept -> void { churn_ = 0; }
+
   private:
     storage<Key, Capacity> keys_;
+    mutable usize          churn_{0};
+};
+
+// Base hash map
+template <typename Key, usize Capacity, usize RehashLimit>
+class hash_table_storage<Key, void, Capacity, false, RehashLimit> {
+  public:
+    [[nodiscard]] constexpr auto key_data(this auto&& self) noexcept -> auto* {
+        return self.keys_.data();
+    }
+    [[nodiscard]] constexpr auto value_data(this auto&&) noexcept -> auto* { return nullptr; }
+
+    [[nodiscard]] constexpr auto needs_rehash() const noexcept -> bool { return false; }
+    constexpr auto               reset_churn() const noexcept -> void {}
+
+  private:
+    storage<Key, Capacity> keys_;
+};
+
+// Base hash set
+template <typename Key, typename Value, usize Capacity, usize RehashLimit>
+class hash_table_storage<Key, Value, Capacity, false, RehashLimit> {
+  public:
+    [[nodiscard]] constexpr auto key_data(this auto&& self) noexcept -> auto* {
+        return self.keys_.data();
+    }
+
+    [[nodiscard]] constexpr auto value_data(this auto&& self) noexcept -> auto* {
+        return self.values_.data();
+    }
+
+    [[nodiscard]] constexpr auto needs_rehash() const noexcept -> bool { return false; }
+    constexpr auto               reset_churn() const noexcept -> void {}
+
+  private:
+    storage<Key, Capacity>   keys_;
+    storage<Value, Capacity> values_;
 };
 
 template <typename Key, typename Value> struct hash_table_iterator_value_t {
@@ -207,7 +263,13 @@ class hash_table_iterator {
 
 // Heavily inspired by Zig's hash map implementation and trevor's C version:
 // https://github.com/trevorswan11/ghoti/blob/4577f3279f5ab09e32a13b8cacb044da686e64bd/src/util/containers/hash_map.c
-template <typename Key, typename Value, usize Capacity, typename Hash, typename Equal>
+template <typename Key,
+          typename Value,
+          usize Capacity,
+          typename Hash,
+          typename Equal,
+          bool  AutoRehash,
+          usize RehashLimit>
     requires(Capacity > 0 && is_power_of_two(Capacity) && !std::same_as<void, Key>)
 class hash_table {
   public:
@@ -339,6 +401,8 @@ class hash_table {
 
         metadata_[*idx].bury();
         size_ -= 1;
+
+        if (storage_.needs_rehash()) { rehash(); }
     }
 
     [[nodiscard]] constexpr auto        empty() const noexcept -> bool { return size_ == 0; }
@@ -384,7 +448,11 @@ class hash_table {
     // Useful when doing many insert/release cycles to clean tombstones
     constexpr auto rehash() noexcept -> void {
         // Nearly identical to C reference
-        if (size_ == 0) { return; }
+        storage_.reset_churn();
+        if (size_ == 0) {
+            for (auto& m : metadata_) { m = hash_table_metadata::make_open_slot(); }
+            return;
+        }
 
         // Open up all metadata for temporary tracking
         for (auto& metadata : metadata_) {
@@ -499,8 +567,10 @@ class hash_table {
                     }
 
                     if constexpr (is_map) {
-                        std::destroy_at(value_data() + probe);
-                        std::construct_at(value_data() + probe, std::forward<Args>(args)...);
+                        if (overwrite_existing) {
+                            std::destroy_at(value_data() + probe);
+                            std::construct_at(value_data() + probe, std::forward<Args>(args)...);
+                        }
                     }
                     return {iterator{*this, probe}, overwrite_existing};
                 }
@@ -588,9 +658,9 @@ class hash_table {
     constexpr friend auto swap(hash_table& lhs, hash_table& rhs) noexcept -> void { lhs.swap(rhs); }
 
   private:
-    std::array<hash_table_metadata, Capacity> metadata_{};
-    hash_table_storage<Key, Value, Capacity>  storage_;
-    usize                                     size_{0};
+    std::array<hash_table_metadata, Capacity>                         metadata_{};
+    hash_table_storage<Key, Value, Capacity, AutoRehash, RehashLimit> storage_;
+    usize                                                             size_{0};
 };
 
 } // namespace detail
@@ -602,7 +672,8 @@ template <typename Key,
           typename Hash = std::conditional_t<StringLike<Key>, crc::hash<Key>, hash<Key>>,
           typename Compare =
               std::conditional_t<StringLike<Key>, string_transparent_eq<Key>, std::equal_to<Key>>>
-using hash_map = detail::hash_table<Key, Value, ceil_power_of_two(Capacity), Hash, Compare>;
+using hash_map =
+    detail::hash_table<Key, Value, ceil_power_of_two(Capacity), Hash, Compare, false, 0>;
 
 // Construct a hash map from a list of pairs
 template <InsertablePair... Pairs>
@@ -623,7 +694,8 @@ template <typename Key,
           typename Hash = std::conditional_t<StringLike<Key>, crc::hash<Key>, hash<Key>>,
           typename Compare =
               std::conditional_t<StringLike<Key>, string_transparent_eq<Key>, std::equal_to<Key>>>
-using hash_set = detail::hash_table<Key, void, ceil_power_of_two(Capacity), Hash, Compare>;
+using hash_set =
+    detail::hash_table<Key, void, ceil_power_of_two(Capacity), Hash, Compare, false, 0>;
 
 // Construct a hash set from a list of keys
 template <typename... Keys>
@@ -631,6 +703,52 @@ template <typename... Keys>
 [[nodiscard]] constexpr auto make_hash_set(Keys&&... keys) noexcept {
     using std::get;
     hash_set<std::common_type_t<std::decay_t<Keys>...>, sizeof...(Keys)> set;
+    (..., set.emplace(std::forward<Keys>(keys)));
+    return set;
+}
+
+// A fixed-size zero-allocation container supporting hash-map operations and automatic rehashing
+template <typename Key,
+          typename Value,
+          usize Capacity,
+          typename Hash = std::conditional_t<StringLike<Key>, crc::hash<Key>, hash<Key>>,
+          typename Compare =
+              std::conditional_t<StringLike<Key>, string_transparent_eq<Key>, std::equal_to<Key>>,
+          usize RehashLimit = Capacity / 2 == 0 ? 1UZ : Capacity / 2>
+using auto_hash_map =
+    detail::hash_table<Key, Value, ceil_power_of_two(Capacity), Hash, Compare, true, RehashLimit>;
+
+// Construct an auto hash map from a list of pairs
+template <InsertablePair... Pairs>
+    requires(sizeof...(Pairs) > 0)
+[[nodiscard]] constexpr auto make_auto_hash_map(Pairs&&... kv_pairs) noexcept {
+    using std::get;
+    auto_hash_map<common_tuple_type_t<0, Pairs...>,
+                  common_tuple_type_t<1, Pairs...>,
+                  sizeof...(Pairs)>
+        map;
+    (...,
+     map.emplace(get<0>(std::forward<decltype(kv_pairs)>(kv_pairs)),
+                 get<1>(std::forward<decltype(kv_pairs)>(kv_pairs))));
+    return map;
+}
+
+// A fixed-size zero-allocation container supporting hash-set operations and automatic rehashing
+template <typename Key,
+          usize Capacity,
+          typename Hash = std::conditional_t<StringLike<Key>, crc::hash<Key>, hash<Key>>,
+          typename Compare =
+              std::conditional_t<StringLike<Key>, string_transparent_eq<Key>, std::equal_to<Key>>,
+          usize RehashLimit = Capacity / 2 == 0 ? 1UZ : Capacity / 2>
+using auto_hash_set =
+    detail::hash_table<Key, void, ceil_power_of_two(Capacity), Hash, Compare, true, RehashLimit>;
+
+// Construct an auto hash set from a list of keys
+template <typename... Keys>
+    requires(sizeof...(Keys) > 0)
+[[nodiscard]] constexpr auto make_auto_hash_set(Keys&&... keys) noexcept {
+    using std::get;
+    auto_hash_set<std::common_type_t<std::decay_t<Keys>...>, sizeof...(Keys)> set;
     (..., set.emplace(std::forward<Keys>(keys)));
     return set;
 }

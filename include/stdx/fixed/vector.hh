@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstring>
 #include <memory>
+#include <type_traits>
 #include <utility>
 
 #include <gsl/span>
@@ -28,7 +29,7 @@ class vector {
     using const_iterator  = const Item*;
 
   public:
-    vector() = default;
+    constexpr vector() = default;
     ~vector() { clear(); }
     ~vector()
         requires TriviallyDestructible<Item>
@@ -36,7 +37,8 @@ class vector {
 
     // Constructs the vector in place by emplacing each item into the buffer
     template <typename... Is>
-        requires(sizeof...(Is) <= Capacity)
+        requires(sizeof...(Is) <= Capacity &&
+                 !(sizeof...(Is) == 1 && (std::is_same_v<std::decay_t<Is>, vector> && ...)))
     constexpr explicit vector(Is&&... items) {
         (..., emplace_back(std::forward<Is>(items)));
     }
@@ -48,7 +50,7 @@ class vector {
     constexpr vector(const vector& other) {
         if constexpr (TriviallyCopyable<Item>) {
             size_ = other.size_;
-            std::copy(other.begin(), other.end(), data());
+            std::ranges::copy(other, data());
         } else {
             for (const auto& item : other) { emplace_back(item); }
         }
@@ -69,7 +71,7 @@ class vector {
     constexpr vector(vector&& other) noexcept {
         if constexpr (TriviallyCopyable<Item>) {
             size_ = other.size_;
-            std::copy(other.begin(), other.end(), data());
+            std::ranges::copy(other, data());
         } else {
             for (auto& item : other) { emplace_back(std::move(item)); }
         }
@@ -81,7 +83,7 @@ class vector {
             clear();
             if constexpr (TriviallyCopyable<Item>) {
                 size_ = other.size_;
-                std::copy(other.begin(), other.end(), data());
+                std::ranges::copy(other, data());
             } else {
                 for (auto& item : other) { emplace_back(std::move(item)); }
             }

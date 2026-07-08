@@ -329,4 +329,53 @@ TEST_CASE("hash_map ranges compatibility") {
     CHECK(iter_count == 3);
 }
 
+TEST_CASE("auto_hash_map basic usage & automatic tombstone cleanup") {
+    fixed::auto_hash_map<u32, u32, 8> ahm;
+    STATIC_CHECK(ahm.capacity() == 8);
+    CHECK(ahm.size() == 0);
+
+    for (u32 i{0}; i < 50; ++i) {
+        ahm.emplace(i, i * 10);
+        CHECK(ahm.size() == 1);
+        CHECK(ahm.contains(i));
+        CHECK(ahm.get(i) == i * 10);
+
+        ahm.remove(i);
+        CHECK(ahm.size() == 0);
+        CHECK_FALSE(ahm.contains(i));
+    }
+}
+
+TEST_CASE("auto_hash_set basic usage & automatic tombstone cleanup") {
+    fixed::auto_hash_set<u32, 8> ahs;
+
+    STATIC_CHECK(ahs.capacity() == 8);
+    CHECK(ahs.size() == 0);
+
+    for (u32 i{0}; i < 50; ++i) {
+        ahs.emplace(i);
+        CHECK(ahs.size() == 1);
+        CHECK(ahs.contains(i));
+
+        ahs.remove(i);
+        CHECK(ahs.size() == 0);
+        CHECK_FALSE(ahs.contains(i));
+    }
+}
+
+TEST_CASE("make_auto_hash_map & make_auto_hash_set helper constructors") {
+    auto ahm{fixed::make_auto_hash_map(std::pair{1, 10}, std::pair{2, 20})};
+    STATIC_CHECK(ahm.capacity() == 2);
+    CHECK(ahm.size() == 2);
+    CHECK(ahm.get(1) == 10);
+    CHECK(ahm.get(2) == 20);
+
+    auto ahs{fixed::make_auto_hash_set(10, 20, 30)};
+    STATIC_CHECK(ahs.capacity() == 4);
+    CHECK(ahs.size() == 3);
+    CHECK(ahs.contains(10));
+    CHECK(ahs.contains(20));
+    CHECK(ahs.contains(30));
+}
+
 } // namespace stdx::tests

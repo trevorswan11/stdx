@@ -106,3 +106,9 @@
 - Make `stdx::fixed::vector` respect trivial types
     - Use `std::fill` when growing if trivially copyable
     - Update the field without popping elements when shrinking if trivially destructible
+
+# v1.6.0
+
+- Make `stdx::fixed::hash_table` respect overwrite existing in map workflows
+- Make `stdx::fixed::vector` constructor use copy constructor correctly
+- Add `auto_` variants to hash tables for automatic rehashing
