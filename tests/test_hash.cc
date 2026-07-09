@@ -21,4 +21,8 @@ TEST_CASE("Order dependent hashing") {
     CHECK_FALSE(h1.finalize() == h2.finalize());
 }
 
+TEST_CASE("Builder pattern hashing") {
+    CHECK_FALSE(hasher{}.combine(1).combine(2).combine(3).finalize() == 0);
+}
+
 } // namespace stdx::tests

@@ -112,3 +112,7 @@
 - Make `stdx::fixed::hash_table` respect overwrite existing in map workflows
 - Make `stdx::fixed::vector` constructor use copy constructor correctly
 - Add `auto_` variants to hash tables for automatic rehashing
+
+# v1.6.1
+
+- Make `stdx::hasher` return references to self on `combine` for 'builder' pattern

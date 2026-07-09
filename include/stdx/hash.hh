@@ -163,12 +163,14 @@ class hasher {
     constexpr hasher() noexcept = default;
 
     // Hashes the provided value and mixes the result with the current hash
-    template <typename T> constexpr auto combine(const T& value) noexcept -> void {
+    template <typename T> constexpr auto combine(const T& value) noexcept -> hasher& {
         hash_ = wyhash::mix(hash_, hash_impl(value) ^ 0xDABB1EDCABA1F01D);
+        return *this;
     }
 
-    template <> constexpr auto combine<hasher>(const hasher& value) noexcept -> void {
+    template <> constexpr auto combine<hasher>(const hasher& value) noexcept -> hasher& {
         hash_ = wyhash::mix(hash_, value.finalize());
+        return *this;
     }
 
     // Call this after a full operation to get the resulting hash
