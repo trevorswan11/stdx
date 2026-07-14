@@ -3,7 +3,6 @@ const std = @import("std");
 const Dependency = @import("../Dependency.zig");
 const Config = Dependency.Config;
 const Artifact = Dependency.Artifact;
-const AbseilBuilder = @import("../abseil/AbseilBuilder.zig");
 const GTestBuilder = @import("GTestBuilder.zig");
 
 const fuzztest_mod = @import("sources/fuzztest.zig");
@@ -28,7 +27,7 @@ pub fn canFuzz(target: std.Build.ResolvedTarget) bool {
 
 pub fn build(
     b: *std.Build,
-    abseil: *AbseilBuilder,
+    abseil: Dependency,
     gtest: *GTestBuilder,
     re2: Dependency,
 ) *Self {
@@ -39,20 +38,22 @@ pub fn build(
         .b = b,
         .metadata = .{
             .upstream = upstream,
-            .config = abseil.metadata.config,
+            .config = gtest.metadata.config,
             .root = upstream.path(""),
         },
     };
 
     self.fuzztest = self.buildCore(abseil, re2, gtest);
+    b.installArtifact(self.fuzztest);
     self.fuzztest_gtest_main = self.buildGtestMain(gtest);
+    b.installArtifact(self.fuzztest_gtest_main);
 
     return self;
 }
 
 fn buildCore(
     self: *const Self,
-    abseil: *AbseilBuilder,
+    abseil: Dependency,
     re2: Dependency,
     gtest: *GTestBuilder,
 ) Artifact {
@@ -60,23 +61,7 @@ fn buildCore(
     const mod = self.addModule(&fuzztest_mod.sources);
     mod.addIncludePath(re2.upstream.path(""));
 
-    const link_libs = [_]Artifact{
-        abseil.synchronization.synchronization,
-        abseil.strings.cord,
-        abseil.container.raw_hash_set,
-        abseil.status.statusor,
-        abseil.log.message,
-        abseil.log.globals,
-        abseil.random.seed_sequences,
-        abseil.random.distributions,
-        abseil.debugging.stacktrace,
-        re2.artifact,
-        gtest.gtest,
-        abseil.debugging.failure_signal_handler,
-        abseil.flags.parse,
-        abseil.base.base,
-    };
-
+    const link_libs = [_]Artifact{ abseil.artifact, re2.artifact, gtest.gtest };
     const lib = b.addLibrary(.{
         .name = "fuzztest",
         .root_module = mod,

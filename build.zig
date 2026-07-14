@@ -13,7 +13,6 @@ const ProjectPaths = @import("build/ProjectPaths.zig");
 pub const Dependency = @import("third-party/Dependency.zig");
 pub const KcovBuilder = @import("third-party/kcov/KcovBuilder.zig");
 pub const GTestBuilder = @import("third-party/fuzztest/GTestBuilder.zig");
-pub const AbseilBuilder = @import("third-party/abseil/AbseilBuilder.zig");
 pub const FuzztestBuilder = @import("third-party/fuzztest/FuzztestBuilder.zig");
 
 pub const utils = @import("build/utils.zig");
@@ -26,6 +25,7 @@ pub const zlib = @import("third-party/zlib.zig");
 pub const zstd = @import("third-party/zstd.zig");
 pub const spdlog = @import("third-party/spdlog.zig");
 pub const libarchive = @import("third-party/libarchive.zig");
+pub const abseil = @import("third-party/abseil.zig");
 pub const re2 = @import("third-party/fuzztest/re2.zig");
 
 pub fn build(b: *std.Build) !void {
@@ -127,7 +127,7 @@ pub fn build(b: *std.Build) !void {
 }
 
 const FuzztestArtifacts = struct {
-    abseil: *AbseilBuilder,
+    abseil_dep: Dependency,
     gtest_builder: *GTestBuilder,
     re2_dep: Dependency,
     fuzztest_builder: ?*FuzztestBuilder,
@@ -135,39 +135,19 @@ const FuzztestArtifacts = struct {
 
 /// Installs fuzztest and dependents
 fn installFuzztest(b: *std.Build, config: Dependency.Config) FuzztestArtifacts {
-    const gtest = GTestBuilder.build(b, config);
-    b.installArtifact(gtest.gtest);
-    b.installArtifact(gtest.gtest_main);
-    b.installArtifact(gtest.gmock);
-
-    const abseil = AbseilBuilder.init(b, config);
-    abseil.build();
-    const groups = .{
-        abseil.base,      abseil.numeric,   abseil.strings,
-        abseil.time,      abseil.debugging, abseil.synchronization,
-        abseil.profiling, abseil.hash,      abseil.crc,
-        abseil.container, abseil.status,    abseil.log,
-        abseil.flags,     abseil.random,
-    };
-    inline for (groups) |group| {
-        inline for (std.meta.fields(@TypeOf(group))) |field| {
-            b.installArtifact(@field(group, field.name));
-        }
-    }
-
-    const re2_dep = re2.build(b, abseil);
-    b.installArtifact(re2_dep.artifact);
+    const gtest: *GTestBuilder = .build(b, config);
+    const abseil_dep = abseil.build(b, config);
+    const re2_dep = re2.build(b, abseil_dep, config);
 
     var artifacts: FuzztestArtifacts = .{
-        .abseil = abseil,
+        .abseil_dep = abseil_dep,
         .gtest_builder = gtest,
         .re2_dep = re2_dep,
         .fuzztest_builder = null,
     };
 
     if (FuzztestBuilder.canFuzz(config.target)) {
-        const fuzztest: *FuzztestBuilder = .build(b, abseil, gtest, re2_dep);
-        b.installArtifact(fuzztest.fuzztest);
+        const fuzztest: *FuzztestBuilder = .build(b, abseil_dep, gtest, re2_dep);
         artifacts.fuzztest_builder = fuzztest;
     }
     return artifacts;

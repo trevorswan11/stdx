@@ -37,17 +37,20 @@ pub fn build(b: *std.Build, config: Config) *Self {
         .root = upstream.path("googletest"),
         .source = "src/gtest-all.cc",
     });
+    b.installArtifact(self.gtest);
     self.gtest_main = self.buildArtifact(.{
         .name = "gtest_main",
         .root = upstream.path("googletest"),
         .source = "src/gtest_main.cc",
     });
+    b.installArtifact(self.gtest_main);
     self.gmock = self.buildArtifact(.{
         .name = "gmock",
         .root = upstream.path("googlemock"),
         .source = "src/gmock-all.cc",
     });
     self.gmock.root_module.linkLibrary(self.gtest);
+    b.installArtifact(self.gmock);
 
     return self;
 }

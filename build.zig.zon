@@ -1,6 +1,6 @@
 .{
     .name = .stdx,
-    .version = "2.0.1",
+    .version = "2.1.0",
     .minimum_zig_version = "0.16.0",
     .fingerprint = 0x5479474f83add874,
     .dependencies = .{
@@ -53,8 +53,8 @@
             .hash = "N-V-__8AAAOGPQAIRRMOhOxA3wZyCyfphEdrp91WLkHHzWZf",
         },
         .abseil = .{
-            .url = "https://github.com/abseil/abseil-cpp/archive/refs/tags/20260107.1.tar.gz",
-            .hash = "N-V-__8AAHvBpQC2PgAgIxqg7-WRzv6zAW3ItECY_C63R_Nn",
+            .url = "https://github.com/abseil/abseil-cpp/releases/download/20260526.0/abseil-cpp-20260526.0.tar.gz",
+            .hash = "N-V-__8AAG4nrQCLR5Wb9-U86e2atvr8nnVn9jWxR4WYNmMg",
         },
         .re2 = .{
             .url = "https://github.com/google/re2/archive/refs/tags/2025-11-05.tar.gz",

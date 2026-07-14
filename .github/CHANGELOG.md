@@ -126,3 +126,7 @@
 # v2.0.1
 
 - Fix a bug where `crc32` would only work with contiguous ranges despite only needing an `input_range`
+
+# v2.1.0
+
+- Make abseil considerably easier to install
