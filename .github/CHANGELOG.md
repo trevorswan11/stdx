@@ -122,3 +122,7 @@
 - Remove template parameter from `crc::hash`
 - `fixed::hash_` and `fixed::auto_hash_` no longer default to crc32 for hashing, preferring wyhash
     - All `constexpr` string hash maps must manually specify the `crc::hash` function
+
+# v2.0.1
+
+- Fix a bug where `crc32` would only work with contiguous ranges despite only needing an `input_range`

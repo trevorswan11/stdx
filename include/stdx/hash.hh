@@ -101,7 +101,7 @@ static constexpr std::array crc_table{
     0xb40bbe37U, 0xc30c8ea1U, 0x5a05df1bU, 0x2d02ef8dU};
 
 // Pulled almost verbatim from stack overflow, just rearranged for modern C++
-[[nodiscard]] constexpr auto crc32(std::ranges::contiguous_range auto&& bytes) noexcept -> u32 {
+[[nodiscard]] constexpr auto crc32(std::ranges::input_range auto&& bytes) noexcept -> u32 {
     u32 crc{0xFFFFFFFF};
     for (const auto b : bytes) { crc = (crc >> 8) ^ crc_table[(crc ^ static_cast<u32>(b)) & 0xFF]; }
     return crc;
