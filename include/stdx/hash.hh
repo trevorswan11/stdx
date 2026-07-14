@@ -3,7 +3,6 @@
 #include <array>
 #include <cstddef>
 #include <ranges>
-#include <string>
 #include <string_view>
 #include <type_traits>
 
@@ -109,12 +108,13 @@ static constexpr std::array crc_table{
 }
 
 // This exists for constexpr string hashing only. `std::hash` is appropriate in other scenarios
-template <typename T> struct hash {
+struct hash {
     using is_transparent = void;
     using is_avalanching = void;
 
-    [[nodiscard]] static constexpr auto operator()(std::string_view str) noexcept -> u64 {
-        return wyhash::hash(crc32(str) ^ 0xFFFFFFFF);
+    template <typename S>
+    [[nodiscard]] static constexpr auto operator()(const S& str) noexcept -> u64 {
+        return wyhash::hash(crc32(string::to_view(str)) ^ 0xFFFFFFFF);
     }
 };
 
@@ -137,19 +137,15 @@ struct string_transparent_hash {
     using is_transparent = void;
     using is_avalanching = void;
 
-    [[nodiscard]] static auto operator()(std::string_view str) noexcept -> u64 {
-        return ankerl::unordered_dense::hash<std::string_view>{}(str);
-    }
-
-    [[nodiscard]] auto operator()(const std::string& str) const noexcept -> u64 {
-        return operator()(std::string_view{str});
+    template <typename S> [[nodiscard]] static auto operator()(const S& str) noexcept -> u64 {
+        return ankerl::unordered_dense::hash<std::string_view>{}(string::to_view(str));
     }
 };
 
-template <typename S1> struct string_transparent_eq {
+struct string_transparent_eq {
     using is_transparent = void;
 
-    template <typename S2>
+    template <typename S1, typename S2>
     [[nodiscard]] constexpr auto operator()(const S1& lhs, const S2& rhs) const noexcept -> bool {
         return string::to_view(lhs) == string::to_view(rhs);
     }

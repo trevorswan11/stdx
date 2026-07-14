@@ -116,3 +116,9 @@
 # v1.6.1
 
 - Make `stdx::hasher` return references to self on `combine` for 'builder' pattern
+
+# v2.0.0
+
+- Remove template parameter from `crc::hash`
+- `fixed::hash_` and `fixed::auto_hash_` no longer default to crc32 for hashing, preferring wyhash
+    - All `constexpr` string hash maps must manually specify the `crc::hash` function

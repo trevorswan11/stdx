@@ -669,9 +669,9 @@ class hash_table {
 template <typename Key,
           typename Value,
           usize Capacity,
-          typename Hash = std::conditional_t<StringLike<Key>, crc::hash<Key>, hash<Key>>,
+          typename Hash = std::conditional_t<StringLike<Key>, string_transparent_hash, hash<Key>>,
           typename Compare =
-              std::conditional_t<StringLike<Key>, string_transparent_eq<Key>, std::equal_to<Key>>>
+              std::conditional_t<StringLike<Key>, string_transparent_eq, std::equal_to<Key>>>
 using hash_map =
     detail::hash_table<Key, Value, ceil_power_of_two(Capacity), Hash, Compare, false, 0>;
 
@@ -691,9 +691,9 @@ template <InsertablePair... Pairs>
 // A fixed-size zero-allocation container supporting hash-set operations
 template <typename Key,
           usize Capacity,
-          typename Hash = std::conditional_t<StringLike<Key>, crc::hash<Key>, hash<Key>>,
+          typename Hash = std::conditional_t<StringLike<Key>, string_transparent_hash, hash<Key>>,
           typename Compare =
-              std::conditional_t<StringLike<Key>, string_transparent_eq<Key>, std::equal_to<Key>>>
+              std::conditional_t<StringLike<Key>, string_transparent_eq, std::equal_to<Key>>>
 using hash_set =
     detail::hash_table<Key, void, ceil_power_of_two(Capacity), Hash, Compare, false, 0>;
 
@@ -711,9 +711,9 @@ template <typename... Keys>
 template <typename Key,
           typename Value,
           usize Capacity,
-          typename Hash = std::conditional_t<StringLike<Key>, crc::hash<Key>, hash<Key>>,
+          typename Hash = std::conditional_t<StringLike<Key>, string_transparent_hash, hash<Key>>,
           typename Compare =
-              std::conditional_t<StringLike<Key>, string_transparent_eq<Key>, std::equal_to<Key>>,
+              std::conditional_t<StringLike<Key>, string_transparent_eq, std::equal_to<Key>>,
           usize RehashLimit = Capacity / 2 == 0 ? 1UZ : Capacity / 2>
 using auto_hash_map =
     detail::hash_table<Key, Value, ceil_power_of_two(Capacity), Hash, Compare, true, RehashLimit>;
@@ -736,9 +736,9 @@ template <InsertablePair... Pairs>
 // A fixed-size zero-allocation container supporting hash-set operations and automatic rehashing
 template <typename Key,
           usize Capacity,
-          typename Hash = std::conditional_t<StringLike<Key>, crc::hash<Key>, hash<Key>>,
+          typename Hash = std::conditional_t<StringLike<Key>, string_transparent_hash, hash<Key>>,
           typename Compare =
-              std::conditional_t<StringLike<Key>, string_transparent_eq<Key>, std::equal_to<Key>>,
+              std::conditional_t<StringLike<Key>, string_transparent_eq, std::equal_to<Key>>,
           usize RehashLimit = Capacity / 2 == 0 ? 1UZ : Capacity / 2>
 using auto_hash_set =
     detail::hash_table<Key, void, ceil_power_of_two(Capacity), Hash, Compare, true, RehashLimit>;

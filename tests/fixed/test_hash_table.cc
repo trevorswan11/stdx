@@ -8,6 +8,7 @@
 
 #include "helpers/raii_tracker.hh"
 #include "stdx/fixed/hash_table.hh"
+#include "stdx/hash.hh"
 #include "stdx/types.hh"
 
 namespace stdx::tests {
@@ -109,13 +110,16 @@ TEST_CASE("hash_map constexpr operations") {
 }
 
 TEST_CASE("hash_map constexpr string view key") {
-    using namespace std::string_view_literals;
-    constexpr auto hm{fixed::make_hash_map(std::pair{"0"sv, 0},
-                                           std::pair{"3"sv, 3},
-                                           std::pair{"3"sv, 4},
-                                           std::pair{"4"sv, 4},
-                                           std::pair{"5"sv, 5},
-                                           std::pair{"6"sv, 6})};
+    constexpr auto hm{[] -> auto {
+        fixed::hash_map<std::string_view, i32, 6, crc::hash> map;
+        map.emplace("0", 0);
+        map.emplace("3", 3);
+        map.emplace("3", 4);
+        map.emplace("4", 4);
+        map.emplace("5", 5);
+        map.emplace("6", 6);
+        return map;
+    }()};
 
     CHECK(hm.contains("0"));
     CHECK(hm.get_opt("3"));
