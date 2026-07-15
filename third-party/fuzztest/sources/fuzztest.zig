@@ -17,7 +17,7 @@ pub const sources = [_][]const u8{
     "fuzztest/internal/fixture_driver.cc",
     "fuzztest/internal/io.cc",
     "fuzztest/internal/logging.cc",
-    "fuzztest/internal/register_fuzzing_mocks.cc",
+    "fuzztest/internal/register_absl_fuzzing_mocks.cc",
     "fuzztest/internal/registry.cc",
     "fuzztest/internal/runtime.cc",
     "fuzztest/internal/sanitizer_interface.cc",

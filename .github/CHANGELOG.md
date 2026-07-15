@@ -130,3 +130,4 @@
 # v2.1.0
 
 - Make abseil considerably easier to install
+- Upgrade abseil and fuzztest versions to latest

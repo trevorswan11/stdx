@@ -49,8 +49,8 @@
             .hash = "N-V-__8AANqC8wBtv10C_41rBAgWfTMpQow7tzRi4h6LQYxm",
         },
         .fuzztest = .{
-            .url = "https://github.com/google/fuzztest/archive/refs/tags/2026-02-19.tar.gz",
-            .hash = "N-V-__8AAAOGPQAIRRMOhOxA3wZyCyfphEdrp91WLkHHzWZf",
+            .url = "https://github.com/google/fuzztest/archive/refs/tags/2026-06-29.tar.gz",
+            .hash = "N-V-__8AABdzPwBDow3JjHs_tGHcmwDBqdMH6drtOxgI31AK",
         },
         .abseil = .{
             .url = "https://github.com/abseil/abseil-cpp/releases/download/20260526.0/abseil-cpp-20260526.0.tar.gz",

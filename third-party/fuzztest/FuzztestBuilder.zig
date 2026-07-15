@@ -103,7 +103,7 @@ fn addModule(self: *const Self, sources: []const []const u8) *std.Build.Module {
     mod.addCSourceFiles(.{
         .root = self.metadata.root,
         .files = sources,
-        .flags = &.{ "-std=c++17", "-DCENTIPEDE_DISABLE_RIEGELI" },
+        .flags = &.{ "-std=c++23", "-DCENTIPEDE_DISABLE_RIEGELI" },
     });
     Dependency.addFrameworkSearchPaths(mod, self.metadata.config.target);
     return mod;

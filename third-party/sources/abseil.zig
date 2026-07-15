@@ -68,6 +68,15 @@ pub const sources = [_][]const u8{
 
     "random/discrete_distribution.cc",
     "random/gaussian_distribution.cc",
+    "random/internal/randen_round_keys.cc",
+    "random/internal/randen.cc",
+    "random/internal/randen_slow.cc",
+    "random/internal/randen_detect.cc",
+    "random/internal/randen_hwaes.cc",
+    "random/internal/seed_material.cc",
+    "random/internal/entropy_pool.cc",
+    "random/seed_sequences.cc",
+    "random/seed_gen_exception.cc",
 
     "status/status.cc",
     "status/status_payload_printer.cc",
@@ -133,6 +142,20 @@ pub const sources = [_][]const u8{
     "profiling/internal/exponential_biased.cc",
 
     "numeric/int128.cc",
+
+    "flags/internal/program_name.cc",
+    "flags/usage_config.cc",
+    "flags/marshalling.cc",
+    "flags/internal/commandlineflag.cc",
+    "flags/commandlineflag.cc",
+    "flags/internal/private_handle_accessor.cc",
+    "flags/reflection.cc",
+    "flags/internal/flag.cc",
+    "flags/internal/usage.cc",
+    "flags/usage.cc",
+    "flags/parse.cc",
+    "status/status_builder.cc",
+    "debugging/failure_signal_handler.cc",
 };
 
 pub const sources_win32 = [_][]const u8{
