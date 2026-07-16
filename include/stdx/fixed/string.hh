@@ -1,5 +1,6 @@
 #pragma once
 
+#include <iterator>
 #include <ostream>
 #include <string>
 #include <string_view>
@@ -22,16 +23,18 @@ template <typename CharT> class basic_string {
     using str_t = std::basic_string<CharT>;
     using sv_t  = std::basic_string_view<CharT>;
 
-    using iterator        = CharT*;
-    using const_iterator  = const CharT*;
-    using value_type      = CharT;
-    using traits_type     = std::char_traits<CharT>;
-    using size_type       = usize;
-    using difference_type = idiff;
-    using pointer         = CharT*;
-    using const_pointer   = const CharT*;
-    using reference       = CharT&;
-    using const_reference = const CharT&;
+    using iterator               = CharT*;
+    using const_iterator         = const CharT*;
+    using value_type             = CharT;
+    using traits_type            = std::char_traits<CharT>;
+    using size_type              = usize;
+    using difference_type        = idiff;
+    using pointer                = CharT*;
+    using const_pointer          = const CharT*;
+    using reference              = CharT&;
+    using const_reference        = const CharT&;
+    using reverse_iterator       = std::reverse_iterator<iterator>;
+    using const_reverse_iterator = std::reverse_iterator<const_iterator>;
 
   public:
     constexpr basic_string() noexcept = default;
@@ -111,10 +114,23 @@ template <typename CharT> class basic_string {
         return self.data()[self.size_ - 1];
     }
 
+    [[nodiscard]] auto begin() noexcept -> iterator { return data(); }
+    [[nodiscard]] auto end() noexcept -> iterator { return data() + size_; }
     [[nodiscard]] auto begin() const noexcept -> const_iterator { return c_str(); }
     [[nodiscard]] auto end() const noexcept -> const_iterator { return c_str() + size_; }
     [[nodiscard]] auto cbegin() const noexcept -> const_iterator { return begin(); }
     [[nodiscard]] auto cend() const noexcept -> const_iterator { return end(); }
+
+    [[nodiscard]] auto rbegin() noexcept -> reverse_iterator { return reverse_iterator(end()); }
+    [[nodiscard]] auto rend() noexcept -> reverse_iterator { return reverse_iterator(begin()); }
+    [[nodiscard]] auto rbegin() const noexcept -> const_reverse_iterator {
+        return const_reverse_iterator(end());
+    }
+    [[nodiscard]] auto rend() const noexcept -> const_reverse_iterator {
+        return const_reverse_iterator(begin());
+    }
+    [[nodiscard]] auto crbegin() const noexcept -> const_reverse_iterator { return rbegin(); }
+    [[nodiscard]] auto crend() const noexcept -> const_reverse_iterator { return rend(); }
 
     [[nodiscard]] auto view() const noexcept -> sv_t { return {c_str(), size_}; }
     [[nodiscard]]      operator sv_t() const noexcept { return view(); }
@@ -145,6 +161,20 @@ template <typename CharT> class basic_string {
 
     [[nodiscard]] constexpr auto contains(sv_t sv) const noexcept -> bool {
         return view().contains(sv);
+    }
+
+    [[nodiscard]] constexpr auto starts_with(sv_t sv) const noexcept -> bool {
+        return view().starts_with(sv);
+    }
+    [[nodiscard]] constexpr auto starts_with(CharT ch) const noexcept -> bool {
+        return view().starts_with(ch);
+    }
+
+    [[nodiscard]] constexpr auto ends_with(sv_t sv) const noexcept -> bool {
+        return view().ends_with(sv);
+    }
+    [[nodiscard]] constexpr auto ends_with(CharT ch) const noexcept -> bool {
+        return view().ends_with(ch);
     }
 
     [[nodiscard]] friend auto operator<=>(const basic_string& lhs,

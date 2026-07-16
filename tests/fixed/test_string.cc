@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <ranges>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -167,6 +169,32 @@ TEST_CASE("fixed::basic_string at, find, contains") {
     CHECK(opt_find.has_value());
     CHECK(&*opt_find == &s[2]);
     CHECK_FALSE(s.find('z'));
+}
+
+TEST_CASE("fixed::basic_string ranges and starts/ends_with") {
+    STATIC_CHECK(std::ranges::contiguous_range<fixed::string>);
+    STATIC_CHECK(std::ranges::common_range<fixed::string>);
+    fixed::string s{"hello"};
+
+    // starts_with & ends_with
+    CHECK(s.starts_with('h'));
+    CHECK(s.starts_with("he"));
+    CHECK(s.starts_with(std::string_view("hel")));
+    CHECK_FALSE(s.starts_with('x'));
+
+    CHECK(s.ends_with('o'));
+    CHECK(s.ends_with("lo"));
+    CHECK(s.ends_with(std::string_view("llo")));
+    CHECK_FALSE(s.ends_with('x'));
+
+    // mutable iterators & ranges algorithm
+    std::ranges::reverse(s);
+    CHECK(s.view() == "olleh");
+
+    // reverse iterators
+    std::string rev;
+    for (char it : std::ranges::reverse_view(s)) { rev += it; }
+    CHECK(rev == "hello");
 }
 
 } // namespace stdx::fixed::tests

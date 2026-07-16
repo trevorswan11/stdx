@@ -131,3 +131,7 @@
 
 - Make abseil considerably easier to install
 - Upgrade abseil and fuzztest versions to latest
+
+# v2.2.0
+
+- Add `fixed::basic_string` for dynamically allocated strings that are not resizable
