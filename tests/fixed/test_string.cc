@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstring>
 #include <ranges>
 #include <sstream>
 #include <string>
@@ -14,13 +15,19 @@
 
 namespace stdx::fixed::tests {
 
+TEST_CASE("fixed::basic_string size initialization") {
+    fixed::string empty{10};
+    CHECK(empty.size() == 10);
+    CHECK(std::ranges::all_of(empty, [](char c) -> bool { return c == 0; }));
+}
+
 TEST_CASE("fixed::basic_string basic usage") {
     fixed::string empty;
     CHECK(empty.empty());
     CHECK(empty.size() == 0);
     CHECK(std::string_view{empty.c_str()} == "");
 
-    fixed::string s1("hello");
+    fixed::string s1{"hello"};
     CHECK_FALSE(s1.empty());
     CHECK(s1.size() == 5);
     CHECK(s1.view() == "hello");

@@ -40,6 +40,8 @@ template <typename CharT> class basic_string {
     constexpr basic_string() noexcept = default;
     ~basic_string()                   = default;
 
+    // Allocates a zero-initialized string of the requested size plus a null terminator
+    basic_string(usize size) : data_{stdx::make_nullable_box<CharT[]>(size + 1)}, size_{size} {}
     basic_string(const CharT* c_str) : basic_string{sv_t{c_str}} {}
 
     basic_string(sv_t sv) {

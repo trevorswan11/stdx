@@ -135,3 +135,7 @@
 # v2.2.0
 
 - Add `fixed::basic_string` for dynamically allocated strings that are not resizable
+
+# v2.2.1
+
+- Add missing size initialization to `fixed::basic_string`
