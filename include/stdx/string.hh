@@ -8,6 +8,7 @@
 #include <string_view>
 #include <type_traits>
 
+#include "stdx/fixed/string.hh"
 #include "stdx/types.hh"
 
 namespace stdx {
@@ -19,6 +20,7 @@ template <> struct is_string_like<const char*> : std::true_type {};
 template <> struct is_string_like<char*> : std::true_type {};
 template <usize N> struct is_string_like<const char[N]> : std::true_type {};
 template <usize N> struct is_string_like<char[N]> : std::true_type {};
+template <> struct is_string_like<fixed::string> : std::true_type {};
 
 template <typename T>
 concept StringLike = is_string_like<std::remove_cvref_t<T>>::value;
