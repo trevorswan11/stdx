@@ -12,7 +12,7 @@ pub const fuzz_tests = "fuzz/";
 pub const tools = "tools/";
 pub const harness = tools ++ "harness/";
 pub const compressor = tools ++ "compressor/";
-pub const build = "build/";
+pub const build = "build-utils/";
 
 pub fn collectToolingPaths(b: *std.Build) !steps.FmtPaths {
     var zig_paths: ArrayList([]const u8) = .init(b);

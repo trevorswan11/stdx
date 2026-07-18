@@ -2,7 +2,7 @@ const std = @import("std");
 
 const Dependency = @import("Dependency.zig");
 const Config = Dependency.Config;
-const ArrayList = @import("../build/array_list.zig").ArrayList;
+const ArrayList = @import("../build-utils/array_list.zig").ArrayList;
 
 const zlib = @import("sources/zlib.zig");
 

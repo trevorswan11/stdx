@@ -3,7 +3,7 @@ const std = @import("std");
 const Dependency = @import("../Dependency.zig");
 const Config = Dependency.Config;
 const Artifact = Dependency.Artifact;
-const ArrayList = @import("../../build/array_list.zig").ArrayList;
+const ArrayList = @import("../../build-utils/array_list.zig").ArrayList;
 
 const iberty = @import("sources/iberty.zig");
 const opcodes = @import("sources/opcodes.zig");

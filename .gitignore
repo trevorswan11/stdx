@@ -54,10 +54,11 @@ dkms.conf
 # Debug information files
 *.dwo
 
-# Zig
+# Build Systems
 zig-out/
 .zig-cache
 zig-pkg/
+build/
 
 # Lsp caches
 .cache

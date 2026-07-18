@@ -2,22 +2,22 @@ const std = @import("std");
 const builtin = @import("builtin");
 const zon = @import("build.zig.zon");
 
-pub const CDBGenerator = @import("build/CDBGenerator.zig");
-pub const RemoveDir = @import("build/RemoveDir.zig");
-pub const LOCCounter = @import("build/LOCCounter.zig");
-pub const CoverageParser = @import("build/CoverageParser.zig");
-pub const Packager = @import("build/Packager.zig");
-pub const ArrayList = @import("build/array_list.zig").ArrayList;
-const ProjectPaths = @import("build/ProjectPaths.zig");
+pub const CDBGenerator = @import("build-utils/CDBGenerator.zig");
+pub const RemoveDir = @import("build-utils/RemoveDir.zig");
+pub const LOCCounter = @import("build-utils/LOCCounter.zig");
+pub const CoverageParser = @import("build-utils/CoverageParser.zig");
+pub const Packager = @import("build-utils/Packager.zig");
+pub const ArrayList = @import("build-utils/array_list.zig").ArrayList;
+const ProjectPaths = @import("build-utils/ProjectPaths.zig");
 
 pub const Dependency = @import("third-party/Dependency.zig");
 pub const KcovBuilder = @import("third-party/kcov/KcovBuilder.zig");
 pub const GTestBuilder = @import("third-party/fuzztest/GTestBuilder.zig");
 pub const FuzztestBuilder = @import("third-party/fuzztest/FuzztestBuilder.zig");
 
-pub const utils = @import("build/utils.zig");
-pub const builders = @import("build/builders.zig");
-pub const steps = @import("build/steps.zig");
+pub const utils = @import("build-utils/utils.zig");
+pub const builders = @import("build-utils/builders.zig");
+pub const steps = @import("build-utils/steps.zig");
 pub const cppcheck = @import("third-party/cppcheck.zig");
 pub const fmt = @import("third-party/fmt.zig");
 pub const catch2 = @import("third-party/catch2.zig");
@@ -223,7 +223,10 @@ fn buildStdx(b: *std.Build, config: struct {
     cxx_flags: []const []const u8,
 }) !*std.Build.Step.Compile {
     const target = config.target;
-    const config_h = b.addConfigHeader(.{ .include_path = "stdx/config.h" }, .{
+    const config_h = b.addConfigHeader(.{
+        .style = .{ .cmake = b.path("cmake/config.h.in") },
+        .include_path = "stdx/config.h",
+    }, .{
         .STDX_VERSION_STR = version_str,
         .STDX_VERSION_MAJOR = @as(i64, version.major),
         .STDX_VERSION_MINOR = @as(i64, version.minor),
