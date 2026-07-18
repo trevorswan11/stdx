@@ -42,7 +42,7 @@ struct session_deleter {
 };
 
 constinit nullable_box<std::ofstream, session_deleter> session;
-constinit std::mutex                                   mutex;
+std::mutex                                             mutex;
 
 class buffer {
   public:
