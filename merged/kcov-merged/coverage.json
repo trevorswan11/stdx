@@ -1,0 +1,29 @@
+{
+  "files": [
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/string.hh", "percent_covered": "100.00", "covered_lines": "22", "total_lines": "22"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/fixed/storage.hh", "percent_covered": "100.00", "covered_lines": "6", "total_lines": "6"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/math.hh", "percent_covered": "100.00", "covered_lines": "12", "total_lines": "12"},
+    {"file": "/home/runner/work/stdx/stdx/src/profiler.cc", "percent_covered": "100.00", "covered_lines": "4", "total_lines": "4"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/hash.hh", "percent_covered": "100.00", "covered_lines": "32", "total_lines": "32"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/fixed/vector.hh", "percent_covered": "100.00", "covered_lines": "76", "total_lines": "76"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/utility.hh", "percent_covered": "100.00", "covered_lines": "1", "total_lines": "1"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/result.hh", "percent_covered": "100.00", "covered_lines": "2", "total_lines": "2"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/option.hh", "percent_covered": "100.00", "covered_lines": "73", "total_lines": "73"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/variant.hh", "percent_covered": "98.81", "covered_lines": "83", "total_lines": "84"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/enum.hh", "percent_covered": "100.00", "covered_lines": "15", "total_lines": "15"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/json.hh", "percent_covered": "83.33", "covered_lines": "15", "total_lines": "18"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/arena.hh", "percent_covered": "100.00", "covered_lines": "105", "total_lines": "105"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/memory.hh", "percent_covered": "95.24", "covered_lines": "40", "total_lines": "42"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/fixed/hash_table.hh", "percent_covered": "90.66", "covered_lines": "262", "total_lines": "289"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/fixed/string.hh", "percent_covered": "95.70", "covered_lines": "89", "total_lines": "93"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/assert.hh", "percent_covered": "21.43", "covered_lines": "3", "total_lines": "14"},
+    {"file": "/home/runner/work/stdx/stdx/include/stdx/fixed/enum_map.hh", "percent_covered": "100.00", "covered_lines": "13", "total_lines": "13"}
+  ],
+  "percent_covered": "94.67",
+  "covered_lines": 853,
+  "total_lines": 901,
+  "percent_low": 25,
+  "percent_high": 75,
+  "command": "",
+  "date": "2026-07-18 21:28:42"
+}
