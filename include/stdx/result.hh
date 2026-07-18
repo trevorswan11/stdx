@@ -9,11 +9,7 @@
 
 namespace stdx {
 
-#ifdef __clang__
-template <typename E> using err = std::__1::unexpected<E>;
-#else
 template <typename E> using err = std::unexpected<E>;
-#endif
 
 namespace detail {
 
