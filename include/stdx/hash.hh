@@ -164,7 +164,7 @@ class hasher {
         return *this;
     }
 
-    template <> constexpr auto combine<hasher>(const hasher& value) noexcept -> hasher& {
+    constexpr auto combine(const hasher& value) noexcept -> hasher& {
         hash_ = wyhash::mix(hash_, value.finalize());
         return *this;
     }

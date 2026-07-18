@@ -34,13 +34,13 @@ class hash_table_metadata {
 
   public:
     constexpr hash_table_metadata() noexcept = default;
-    constexpr hash_table_metadata(u8 fingerprint, bool used) noexcept {
+    constexpr hash_table_metadata(u8 fp, bool used) noexcept {
         raw_ |= used << USED_OFFSET;
-        raw_ |= fingerprint & FINGERPRINT_MASK;
+        raw_ |= fp & FINGERPRINT_MASK;
     }
 
-    constexpr hash_table_metadata(fingerprint fingerprint, bool used) noexcept
-        : hash_table_metadata{static_cast<u8>(fingerprint), used} {}
+    constexpr hash_table_metadata(fingerprint fp, bool used) noexcept
+        : hash_table_metadata{static_cast<u8>(fp), used} {}
 
     [[nodiscard]] static constexpr auto make_open_slot() noexcept -> hash_table_metadata {
         return {fingerprint::OPEN, false};
@@ -66,11 +66,11 @@ class hash_table_metadata {
     }
 
     // Sets the inner fingerprint and marks the metadata as used
-    constexpr auto fill(u8 fingerprint) noexcept -> void { *this = {fingerprint, true}; }
+    constexpr auto fill(u8 fp) noexcept -> void { *this = {fp, true}; }
 
     // Only the 7 most significant bits of the result are relevant
     static constexpr auto take_fingerprint(u64 hash) noexcept -> u8 {
-        return FINGERPRINT_MASK & (hash >> (64 - USED_OFFSET));
+        return static_cast<u8>(FINGERPRINT_MASK & (hash >> (64 - USED_OFFSET)));
     }
 
     [[nodiscard]] constexpr auto operator==(const hash_table_metadata&) const noexcept
@@ -215,7 +215,7 @@ class hash_table_iterator {
     }
 
     // The index is always advanced up to the next occupied slot
-    [[nodiscard]] constexpr auto operator++() -> hash_table_iterator& {
+    constexpr auto operator++() -> hash_table_iterator& {
         if (index_ < Capacity) {
             index_++;
             next();
@@ -223,7 +223,7 @@ class hash_table_iterator {
         return *this;
     }
 
-    [[nodiscard]] constexpr auto operator++(int) -> hash_table_iterator {
+    constexpr auto operator++(int) -> hash_table_iterator {
         hash_table_iterator it{*this};
         ++(*this);
         return it;
@@ -232,7 +232,7 @@ class hash_table_iterator {
     [[nodiscard]] constexpr auto operator*() const noexcept -> reference {
         ASSERT(ht_, "Attempt to dereference null hash map");
         if constexpr (std::same_as<void, Value>) {
-            return reference{*(ht_->key_data() + index_)};
+            return *(ht_->key_data() + index_);
         } else {
             return reference{*(ht_->key_data() + index_), *(ht_->value_data() + index_)};
         }

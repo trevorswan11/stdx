@@ -44,8 +44,8 @@ template <typename T> class ref {
     // cppcheck-suppress-begin noExplicitConstructor
     constexpr ref() noexcept : ptr_{nullptr} {}
     constexpr ref(none_t) noexcept : ptr_{nullptr} {}
-    constexpr ref(T& ref) noexcept : ptr_{&ref} {}
-    constexpr ref(T* ref) noexcept : ptr_{ref} {}
+    constexpr ref(T& reference) noexcept : ptr_{&reference} {}
+    constexpr ref(T* reference) noexcept : ptr_{reference} {}
     ref(T&&) = delete;
 
     template <typename U>

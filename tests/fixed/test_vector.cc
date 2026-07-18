@@ -54,7 +54,7 @@ TEST_CASE("fixed::vector with non-trivial type") {
     SECTION("Contrived example") {
         struct point {
             i32 x, y;
-            point(i32 x, i32 y) : x{x}, y{y} {}
+            point(i32 x_in, i32 y_in) : x{x_in}, y{y_in} {}
         };
 
         fixed::vector<point, 2> points;
@@ -148,10 +148,14 @@ TEST_CASE("Vector self assignment") {
     fixed::vector<tracker, 3> vec;
     vec.emplace_back(0);
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wself-assign-overloaded"
+#ifdef __clang__
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wself-assign-overloaded"
+#endif
     vec = vec;
-#pragma clang diagnostic pop
+#ifdef __clang__
+#    pragma clang diagnostic pop
+#endif
 
     CHECK(vec.size() == 1);
     CHECK(tracker::live_count == 1);

@@ -127,7 +127,7 @@ TEST_CASE("Ref transform on value") {
     i32          i{9};
     option<i32&> opt_i{i};
 
-    const auto res{opt_i.transform([](const i32& i) -> i32 { return i + 2; })};
+    const auto res{opt_i.transform([](const i32& inner) -> i32 { return inner + 2; })};
     REQUIRE(res);
     CHECK(*res == 11);
 }

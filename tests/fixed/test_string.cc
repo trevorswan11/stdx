@@ -47,10 +47,14 @@ TEST_CASE("fixed::basic_string copy construction") {
     CHECK(s3.view() == "hello");
 
     // Self assignment (copy)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wself-assign-overloaded"
+#ifdef __clang__
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wself-assign-overloaded"
+#endif
     s3 = s3;
-#pragma clang diagnostic pop
+#ifdef __clang__
+#    pragma clang diagnostic pop
+#endif
     CHECK(s3.view() == "hello");
 }
 
@@ -69,10 +73,19 @@ TEST_CASE("fixed::basic_string move construction") {
     CHECK(s2.empty());
 
     // Self assignment (move)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wself-move"
+#ifdef __clang__
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wself-move"
+#elifdef __GNUC__
+#    pragma GCC diagnostic push
+#    pragma GCC diagnostic ignored "-Wself-move"
+#endif
     s3 = std::move(s3);
-#pragma clang diagnostic pop
+#ifdef __clang__
+#    pragma clang diagnostic pop
+#elifdef __GNUC__
+#    pragma GCC diagnostic pop
+#endif
     CHECK(s3.view() == "hello");
 }
 

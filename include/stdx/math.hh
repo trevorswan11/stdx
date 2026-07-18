@@ -15,15 +15,16 @@ template <std::unsigned_integral U>
     if ((val & (val - 1)) == 0) { return val; }
 
     // https://stackoverflow.com/questions/466204/rounding-up-to-next-power-of-2
-    val |= --val >> 1;
-    val |= val >> 2;
-    val |= val >> 4;
+    --val;
+    val = static_cast<U>(val | (val >> 1));
+    val = static_cast<U>(val | (val >> 2));
+    val = static_cast<U>(val | (val >> 4));
 
-    if constexpr (sizeof(U) >= 2) { val |= val >> 8; }
-    if constexpr (sizeof(U) >= 4) { val |= val >> 16; }
-    if constexpr (sizeof(U) == 8) { val |= val >> 32; }
+    if constexpr (sizeof(U) >= 2) { val = static_cast<U>(val | (val >> 8)); }
+    if constexpr (sizeof(U) >= 4) { val = static_cast<U>(val | (val >> 16)); }
+    if constexpr (sizeof(U) == 8) { val = static_cast<U>(val | (val >> 32)); }
 
-    return ++val;
+    return static_cast<U>(val + 1);
 }
 
 template <std::unsigned_integral U>

@@ -225,6 +225,10 @@ if(STDX_BUILD_TESTS)
         endif()
     endif()
 
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+        target_link_options(stdx_tests PRIVATE -static)
+    endif()
+
     target_include_directories(stdx_tests PRIVATE tests)
 
     add_test(NAME stdx_tests COMMAND stdx_tests)

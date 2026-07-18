@@ -251,10 +251,14 @@ TEST_CASE("hash_table self assignment") {
     fixed::hash_map<i32, tracker, 3> hm;
     hm.emplace(0, 0);
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wself-assign-overloaded"
+#ifdef __clang__
+#    pragma clang diagnostic push
+#    pragma clang diagnostic ignored "-Wself-assign-overloaded"
+#endif
     hm = hm;
-#pragma clang diagnostic pop
+#ifdef __clang__
+#    pragma clang diagnostic pop
+#endif
 
     CHECK(hm.size() == 1);
     CHECK(tracker::live_count == 1);

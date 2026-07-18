@@ -9,7 +9,10 @@
 
 namespace stdx {
 
-template <typename E> using err = std::__1::unexpected<E>;
+#ifdef __clang__
+#else
+#endif
+template <typename E> using err = std::unexpected<E>;
 
 namespace detail {
 
@@ -49,7 +52,7 @@ template <typename E> class empty_result {
 };
 
 // Uses explicit inline namespace due to name collisions in std
-template <typename T, typename E> using valued_result = std::__1::expected<T, E>;
+template <typename T, typename E> using valued_result = std::expected<T, E>;
 
 template <typename T, typename E> struct result_impl {
     using type = valued_result<T, E>;
@@ -71,7 +74,7 @@ template <typename E, typename... Args>
 // A hack to imitate the 'try' keyword in zig using GNU Statement Expressions
 // https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html
 #define TRY(expr)                                                           \
-    ({                                                                      \
+    __extension__({                                                         \
         auto&& _e = (expr);                                                 \
         if (!_e.has_value()) { return ::stdx::err{std::move(_e).error()}; } \
         std::move(_e).value();                                              \

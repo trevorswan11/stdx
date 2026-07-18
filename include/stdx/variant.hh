@@ -51,7 +51,10 @@ class variant {
     using index_type = min_uint_for_bits<min_bits<N>()>;
 
   private:
-    template <usize I> using nth = __type_pack_element<I, Ts...>;
+    template <usize I, typename... Types> struct nth_type {
+        using type = __type_pack_element<I, Types...>;
+    };
+    template <usize I> using nth = typename nth_type<I, Ts...>::type;
     template <typename T>
     static constexpr usize index_of = [] -> usize {
         usize i{0};
