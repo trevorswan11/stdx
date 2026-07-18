@@ -139,3 +139,8 @@
 # v2.2.1
 
 - Add missing size initialization to `fixed::basic_string`
+
+# v2.3.0
+
+- Add CMake support and add it to CI pipeline
+- Address errors in tests and library code that prevent compilation with GCC
