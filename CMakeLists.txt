@@ -209,6 +209,10 @@ if(STDX_BUILD_TESTS)
         "tests/*.cc"
     )
 
+    if(MINGW)
+        add_link_options("-static-libgcc" "-static-libstdc++" "-static")
+    endif()
+
     add_executable(stdx_tests ${STDX_TEST_SOURCES})
     target_link_libraries(stdx_tests PRIVATE stdx ${CATCH2_TARGET})
 
@@ -227,10 +231,6 @@ if(STDX_BUILD_TESTS)
         if(STDX_WARNINGS_AS_ERRORS)
             target_compile_options(stdx_tests PRIVATE -Werror)
         endif()
-    endif()
-
-    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-        target_link_options(stdx_tests PRIVATE -static)
     endif()
 
     target_include_directories(stdx_tests PRIVATE tests)
