@@ -57,30 +57,60 @@ jobs:
         run: zig build test
 
       - name: CMake configure (debug)
-        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        if: matrix.os != 'windows-latest'
         run: cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
 
       - name: CMake build (debug)
-        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        if: matrix.os != 'windows-latest'
         run: cmake --build build-debug --config Debug
 
       - name: CMake test (debug)
-        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        if: matrix.os != 'windows-latest'
+        run: ctest --test-dir build-debug -C Debug --output-on-failure
+
+      - name: CMake configure (debug) - Windows
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+
+      - name: CMake build (debug) - Windows
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: cmake --build build-debug --config Debug
+
+      - name: CMake test (debug) - Windows
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
         run: ctest --test-dir build-debug -C Debug --output-on-failure
 
       - name: Zig build and test (release)
         run: zig build test -Doptimize=ReleaseFast
 
       - name: CMake configure (release)
-        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        if: matrix.os != 'windows-latest'
         run: cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
 
       - name: CMake build (release)
-        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        if: matrix.os != 'windows-latest'
         run: cmake --build build-release --config Release
 
       - name: CMake test (release)
-        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        if: matrix.os != 'windows-latest'
+        run: ctest --test-dir build-release -C Release --output-on-failure
+
+      - name: CMake configure (release) - Windows
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: CMake build (release) - Windows
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
+        run: cmake --build build-release --config Release
+
+      - name: CMake test (release) - Windows
+        if: matrix.os == 'windows-latest'
+        shell: msys2 {0}
         run: ctest --test-dir build-release -C Release --output-on-failure
 
       - name: Run fuzz tests
