@@ -237,4 +237,3 @@ if(STDX_BUILD_TESTS)
 
     add_test(NAME stdx_tests COMMAND stdx_tests)
 endif()
-
