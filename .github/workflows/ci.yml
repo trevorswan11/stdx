@@ -39,11 +39,14 @@ jobs:
             mingw-w64-ucrt-x86_64-cmake
             mingw-w64-ucrt-x86_64-ninja
 
-      - name: Install Ninja (Ubuntu)
+      - name: Install LLVM 21 and Ninja (Ubuntu)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 21
+          sudo apt-get install -y clang-format-21 ninja-build
+          sudo ln -sf /usr/bin/clang-format-21 /usr/bin/clang-format
 
       - name: Fetch dependencies
         uses: nick-fields/retry@v3
@@ -58,6 +61,9 @@ jobs:
 
       - name: CMake configure (debug)
         if: matrix.os != 'windows-latest'
+        env:
+          CC: ${{ matrix.os == 'ubuntu-latest' && 'clang-21' || 'cc' }}
+          CXX: ${{ matrix.os == 'ubuntu-latest' && 'clang++-21' || 'c++' }}
         run: cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
 
       - name: CMake build (debug)
@@ -88,6 +94,9 @@ jobs:
 
       - name: CMake configure (release)
         if: matrix.os != 'windows-latest'
+        env:
+          CC: ${{ matrix.os == 'ubuntu-latest' && 'clang-21' || 'cc' }}
+          CXX: ${{ matrix.os == 'ubuntu-latest' && 'clang++-21' || 'c++' }}
         run: cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
 
       - name: CMake build (release)
@@ -119,13 +128,7 @@ jobs:
 
       - name: Check formatting
         if: matrix.os == 'ubuntu-latest'
-        run: |
-          wget https://apt.llvm.org/llvm.sh
-          chmod +x llvm.sh
-          sudo ./llvm.sh 21
-          sudo apt-get install -y clang-format-21
-          sudo ln -sf /usr/bin/clang-format-21 /usr/bin/clang-format
-          zig build fmt-check
+        run: zig build fmt-check
 
       - name: Static Analysis
         run: zig build check
