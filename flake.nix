@@ -38,6 +38,8 @@
           buildInputs = [
             zig
             zls
+            cmake
+            ninja
           ]
           ++ (with llvmPackages_21; [
             clang-tools

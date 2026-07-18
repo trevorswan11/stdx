@@ -28,6 +28,23 @@ jobs:
         with:
           version: 0.16.0
 
+      - name: Set up MSYS2
+        if: matrix.os == 'windows-latest'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+
+      - name: Install Ninja (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build
+
       - name: Fetch dependencies
         uses: nick-fields/retry@v3
         with:
@@ -36,11 +53,35 @@ jobs:
           retry_wait_seconds: 30
           command: zig build --fetch=all
 
-      - name: Build and test (debug)
+      - name: Zig build and test (debug)
         run: zig build test
 
-      - name: Build and test (release)
+      - name: CMake configure (debug)
+        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        run: cmake -B build-debug -G Ninja -DCMAKE_BUILD_TYPE=Debug
+
+      - name: CMake build (debug)
+        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        run: cmake --build build-debug --config Debug
+
+      - name: CMake test (debug)
+        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        run: ctest --test-dir build-debug -C Debug --output-on-failure
+
+      - name: Zig build and test (release)
         run: zig build test -Doptimize=ReleaseFast
+
+      - name: CMake configure (release)
+        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        run: cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: CMake build (release)
+        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        run: cmake --build build-release --config Release
+
+      - name: CMake test (release)
+        shell: ${{ matrix.os == 'windows-latest' && 'msys2 {0}' || 'bash' }}
+        run: ctest --test-dir build-release -C Release --output-on-failure
 
       - name: Run fuzz tests
         if: matrix.os != 'windows-latest'

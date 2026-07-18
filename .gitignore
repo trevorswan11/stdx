@@ -59,6 +59,9 @@ zig-out/
 .zig-cache
 zig-pkg/
 build/
+build-ninja/
+build-debug/
+build-release/
 
 # Lsp caches
 .cache
