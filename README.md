@@ -28,7 +28,12 @@ cd stdx
 zig build
 ```
 
-#### Adding stdx to a Project
+### Adding stdx to a Project
+
+> [!WARNING]
+> **MSVC is completely disallowed by the build system.** If you are building on Windows, you must use GCC or Clang through something like MSYS2/MinGW.
+
+#### For Zig Projects
 
 Run the following in an environment where you have a C++ oriented `build.zig`:
 
@@ -48,6 +53,26 @@ const stdx_dep = b.dependency("stdx", .{
     .run_cdb_gen = false,
 });
 const libstdx = stdx_dep.artifact("stdx");
+```
+
+#### For CMake Projects
+
+You can integrate `stdx` into your CMake project using `FetchContent` or by adding it as a subdirectory.
+
+Example configuration using `FetchContent`:
+
+```cmake
+include(FetchContent)
+
+FetchContent_Declare(
+    stdx
+    GIT_REPOSITORY https://github.com/trevorswan11/stdx.git
+    GIT_TAG        v2.3.0 # Or your desired tag/commit
+)
+FetchContent_MakeAvailable(stdx)
+
+# Link your target against stdx
+target_link_libraries(your_target PRIVATE stdx)
 ```
 
 ## Dependencies
