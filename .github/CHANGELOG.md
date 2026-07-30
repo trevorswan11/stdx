@@ -144,3 +144,7 @@
 
 - Add CMake support and add it to CI pipeline
 - Address errors in tests and library code that prevent compilation with GCC
+
+# v2.4.0
+
+- Add `to_lower`/`to_upper` utilities for strings

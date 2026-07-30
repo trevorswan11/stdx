@@ -71,4 +71,36 @@ TEST_CASE("String view conversion") {
     CHECK(string::to_view(view) == string::to_view(str));
 }
 
+TEST_CASE("to_lower and to_upper for characters") {
+    CHECK(string::to_lower('A') == 'a');
+    CHECK(string::to_lower('Z') == 'z');
+    CHECK(string::to_lower('a') == 'a');
+    CHECK(string::to_lower('z') == 'z');
+    CHECK(string::to_lower('0') == '0');
+    CHECK(string::to_lower('!') == '!');
+
+    CHECK(string::to_upper('a') == 'A');
+    CHECK(string::to_upper('z') == 'Z');
+    CHECK(string::to_upper('A') == 'A');
+    CHECK(string::to_upper('Z') == 'Z');
+    CHECK(string::to_upper('9') == '9');
+    CHECK(string::to_upper('?') == '?');
+}
+
+TEST_CASE("inplace_lower and inplace_upper for strings") {
+    std::string s1{"AbCdEfG123!@#"};
+    string::inplace_lower(s1);
+    CHECK(s1 == "abcdefg123!@#");
+
+    std::string s2{"AbCdEfG123!@#"};
+    string::inplace_upper(s2);
+    CHECK(s2 == "ABCDEFG123!@#");
+
+    std::string empty;
+    string::inplace_lower(empty);
+    CHECK(empty.empty());
+    string::inplace_upper(empty);
+    CHECK(empty.empty());
+}
+
 } // namespace stdx::tests

@@ -92,6 +92,24 @@ template <StringLike S>
     return input;
 }
 
+[[nodiscard]] constexpr auto to_lower(char c) noexcept -> char {
+    if (c >= 'A' && c <= 'Z') { return static_cast<char>(c + ('a' - 'A')); }
+    return c;
+}
+
+[[nodiscard]] constexpr auto to_upper(char c) noexcept -> char {
+    if (c >= 'a' && c <= 'z') { return static_cast<char>(c - ('a' - 'A')); }
+    return c;
+}
+
+constexpr auto inplace_lower(std::string& str) noexcept -> void {
+    std::ranges::transform(str, str.begin(), [](auto c) -> char { return to_lower(c); });
+}
+
+constexpr auto inplace_upper(std::string& str) noexcept -> void {
+    std::ranges::transform(str, str.begin(), [](auto c) -> char { return to_upper(c); });
+}
+
 } // namespace string
 
 } // namespace stdx
