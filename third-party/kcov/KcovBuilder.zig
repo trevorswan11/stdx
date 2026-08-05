@@ -6,7 +6,7 @@ const Artifact = Dependency.Artifact;
 
 const zlib = @import("../zlib.zig");
 const zstd = @import("../zstd.zig");
-const CurlBuilder = @import("CurlBuilder.zig");
+const CurlBuilder = @import("../CurlBuilder.zig");
 const BinutilsBuilder = @import("BinutilsBuilder.zig");
 const ElfutilsBuilder = @import("ElfutilsBuilder.zig");
 
@@ -47,7 +47,7 @@ pub fn allowedTarget(target: std.Build.ResolvedTarget) bool {
 
 /// Builds kcov from source.
 /// https://github.com/allyourcodebase/kcov
-pub fn build(b: *std.Build, config: Config) ?*Self {
+pub fn build(b: *std.Build, curl: *CurlBuilder, config: Config) ?*Self {
     const target = config.target;
     if (!allowedTarget(target)) return null;
 
@@ -67,9 +67,8 @@ pub fn build(b: *std.Build, config: Config) ?*Self {
     const awaiting_libdwarf = libdwarf == null and needs_libdwarf;
 
     const awaiting_platform_specific = awaiting_bu or awaiting_eu or awaiting_libdwarf;
-    const curl = CurlBuilder.build(b, config);
     const upstream = b.lazyDependency("kcov", .{});
-    if (curl == null or upstream == null or awaiting_platform_specific) return null;
+    if (upstream == null or awaiting_platform_specific) return null;
 
     const self = b.allocator.create(Self) catch @panic("OOM");
     self.* = .{
@@ -80,7 +79,7 @@ pub fn build(b: *std.Build, config: Config) ?*Self {
             .root = upstream.?.path(""),
             .include = upstream.?.path("src/include"),
         },
-        .curl = curl.?,
+        .curl = curl,
         .binutils = binutils,
         .elfutils = elfutils,
         .libdwarf = libdwarf,

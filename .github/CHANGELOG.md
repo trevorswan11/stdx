@@ -148,3 +148,7 @@
 # v2.4.0
 
 - Add `to_lower`/`to_upper` utilities for strings
+
+# v2.5.0
+
+- Add curl as a linkable library on platforms that don't support kcov

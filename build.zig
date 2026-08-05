@@ -11,6 +11,7 @@ pub const ArrayList = @import("build-utils/array_list.zig").ArrayList;
 const ProjectPaths = @import("build-utils/ProjectPaths.zig");
 
 pub const Dependency = @import("third-party/Dependency.zig");
+pub const CurlBuilder = @import("third-party/CurlBuilder.zig");
 pub const KcovBuilder = @import("third-party/kcov/KcovBuilder.zig");
 pub const GTestBuilder = @import("third-party/fuzztest/GTestBuilder.zig");
 pub const FuzztestBuilder = @import("third-party/fuzztest/FuzztestBuilder.zig");
@@ -74,15 +75,18 @@ pub fn build(b: *std.Build) !void {
         for (cdb_steps.wrapped.items) |cdb_step| cdb_gen.step.dependOn(cdb_step);
     }
 
-    const kcov_builder = KcovBuilder.build(b, .{
+    const curl = CurlBuilder.build(b, .{
+        .target = target,
+        .optimize = optimize,
+    });
+    b.installArtifact(curl.libcurl);
+    b.installArtifact(curl.execurl);
+
+    const kcov_builder = KcovBuilder.build(b, curl, .{
         .target = target,
         .optimize = .ReleaseFast,
     });
-
-    if (kcov_builder) |kcov| {
-        b.installArtifact(kcov.curl.execurl);
-        b.installArtifact(kcov.kcov_exe);
-    }
+    if (kcov_builder) |kcov| b.installArtifact(kcov.kcov_exe);
 
     var cppcheck_art: ?*std.Build.Step.Compile = null;
     if (!packaging) {

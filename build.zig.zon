@@ -1,6 +1,6 @@
 .{
     .name = .stdx,
-    .version = "2.4.0",
+    .version = "2.5.0",
     .minimum_zig_version = "0.16.0",
     .fingerprint = 0x5479474f83add874,
     .dependencies = .{
@@ -72,12 +72,10 @@
         .curl = .{
             .url = "https://github.com/curl/curl/archive/refs/tags/curl-8_18_0.tar.gz",
             .hash = "N-V-__8AAHcEBgHdCKCoETva5Llwxgbs_1fqyMcAIdbywrg6",
-            .lazy = true,
         },
         .mbedtls = .{
             .url = "https://github.com/Mbed-TLS/mbedtls/archive/refs/tags/mbedtls-3.6.4.tar.gz",
             .hash = "N-V-__8AADE9jALWhPS2ykOLbf8gUmr9r-SBwyzzpccbtBAv",
-            .lazy = true,
         },
         .binutils = .{
             .url = "https://sourceware.org/pub/binutils/releases/binutils-2.45.tar.xz",

@@ -1,14 +1,14 @@
 const std = @import("std");
 
-const Dependency = @import("../Dependency.zig");
+const Dependency = @import("Dependency.zig");
 const Config = Dependency.Config;
 const Artifact = Dependency.Artifact;
 
 const curl = @import("sources/curl.zig");
 const mbedtls = @import("sources/mbedtls.zig");
 
-const zlib = @import("../zlib.zig");
-const zstd = @import("../zstd.zig");
+const zlib = @import("zlib.zig");
+const zstd = @import("zstd.zig");
 
 const c_flags: []const []const u8 = &.{"-fvisibility=hidden"};
 
@@ -35,24 +35,23 @@ execurl: Artifact = undefined,
 
 /// Compiles curl from source (lib and exe).
 /// https://github.com/allyourcodebase/curl
-pub fn build(b: *std.Build, config: Config) ?*Self {
-    const upstream = b.lazyDependency("curl", .{});
+pub fn build(b: *std.Build, config: Config) *Self {
+    const upstream = b.dependency("curl", .{});
     const libmbedtls = buildMbedtls(b, config);
-    if (upstream == null or libmbedtls == null) return null;
 
     const self = b.allocator.create(Self) catch @panic("OOM");
     self.* = .{
         .b = b,
         .metadata = .{
-            .upstream = upstream.?,
+            .upstream = upstream,
             .config = config,
-            .include_root = upstream.?.path("include"),
-            .lib_root = upstream.?.path("lib"),
-            .src_root = upstream.?.path("src"),
+            .include_root = upstream.path("include"),
+            .lib_root = upstream.path("lib"),
+            .src_root = upstream.path("src"),
         },
         .zlib_dep = zlib.build(b, config),
         .zstd_dep = zstd.build(b, config),
-        .libmbedtls = libmbedtls.?,
+        .libmbedtls = libmbedtls,
     };
 
     self.config_header = self.makeConfigHeader();
@@ -63,8 +62,8 @@ pub fn build(b: *std.Build, config: Config) ?*Self {
 
 /// Compiles mbedtls from source as a static library.
 /// https://github.com/allyourcodebase/mbedtls
-pub fn buildMbedtls(b: *std.Build, config: Config) ?Artifact {
-    const upstream_dep = b.lazyDependency("mbedtls", .{});
+pub fn buildMbedtls(b: *std.Build, config: Config) Artifact {
+    const upstream = b.dependency("mbedtls", .{});
     const target = config.target;
     const mod = b.createModule(.{
         .target = target,
@@ -72,36 +71,34 @@ pub fn buildMbedtls(b: *std.Build, config: Config) ?Artifact {
         .link_libc = true,
     });
 
-    if (upstream_dep) |upstream| {
-        mod.addIncludePath(upstream.path("include"));
-        mod.addCSourceFiles(.{
-            .root = upstream.path("library"),
-            .files = &mbedtls.sources,
-        });
+    mod.addIncludePath(upstream.path("include"));
+    mod.addCSourceFiles(.{
+        .root = upstream.path("library"),
+        .files = &mbedtls.sources,
+    });
 
-        if (target.result.os.tag == .freebsd) {
-            mod.addCMacro("__BSD_VISIBLE", "1");
-        }
+    if (target.result.os.tag == .freebsd) {
+        mod.addCMacro("__BSD_VISIBLE", "1");
+    }
 
-        mod.addCMacro("MBEDTLS_ENTROPY_C", "");
-        mod.addCMacro("MBEDTLS_CTR_DRBG_C", "");
-        mod.addCMacro("MBEDTLS_PLATFORM_C", "");
+    mod.addCMacro("MBEDTLS_ENTROPY_C", "");
+    mod.addCMacro("MBEDTLS_CTR_DRBG_C", "");
+    mod.addCMacro("MBEDTLS_PLATFORM_C", "");
 
-        if (target.result.os.tag == .windows) {
-            mod.linkSystemLibrary("bcrypt", .{});
-        } else {
-            mod.addCMacro("MBEDTLS_PLATFORM_ENTROPY", "");
-            mod.addCMacro("MBEDTLS_HAVE_TIME", "");
-        }
+    if (target.result.os.tag == .windows) {
+        mod.linkSystemLibrary("bcrypt", .{});
+    } else {
+        mod.addCMacro("MBEDTLS_PLATFORM_ENTROPY", "");
+        mod.addCMacro("MBEDTLS_HAVE_TIME", "");
+    }
 
-        const lib = b.addLibrary(.{
-            .name = "mbedtls",
-            .root_module = mod,
-        });
-        lib.installHeadersDirectory(upstream.path("include/mbedtls"), "mbedtls", .{});
-        lib.installHeadersDirectory(upstream.path("include/psa"), "psa", .{});
-        return lib;
-    } else return null;
+    const lib = b.addLibrary(.{
+        .name = "mbedtls",
+        .root_module = mod,
+    });
+    lib.installHeadersDirectory(upstream.path("include/mbedtls"), "mbedtls", .{});
+    lib.installHeadersDirectory(upstream.path("include/psa"), "psa", .{});
+    return lib;
 }
 
 /// Handles CA and the resulting configuration
@@ -193,6 +190,8 @@ fn buildCurlLib(self: *const Self) Artifact {
         mod.linkSystemLibrary("ws2_32", .{});
         mod.linkSystemLibrary("iphlpapi", .{});
         mod.linkSystemLibrary("bcrypt", .{});
+        mod.linkSystemLibrary("crypt32", .{});
+        mod.linkSystemLibrary("secur32", .{});
     }
 
     mod.linkLibrary(self.libmbedtls);
@@ -233,7 +232,7 @@ fn buildCurlExe(self: *const Self) Artifact {
 
     mod.addConfigHeader(self.config_header);
     const exe = b.addExecutable(.{
-        .name = "curl",
+        .name = "execurl",
         .root_module = mod,
     });
     mod.linkLibrary(self.libcurl);
