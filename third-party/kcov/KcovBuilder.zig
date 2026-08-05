@@ -55,30 +55,24 @@ pub fn build(b: *std.Build, curl: *CurlBuilder) ?*Self {
     var binutils: ?*BinutilsBuilder = null;
     const needs_binutils = target.result.cpu.arch.isX86();
     if (needs_binutils) binutils = BinutilsBuilder.build(b, config);
-    const awaiting_bu = binutils == null and needs_binutils;
 
     var elfutils: ?*ElfutilsBuilder = null;
     const needs_elfutils = target.result.os.tag == .linux;
     if (needs_elfutils) elfutils = ElfutilsBuilder.build(b, config);
-    const awaiting_eu = elfutils == null and needs_elfutils;
 
     var libdwarf: ?Artifact = null;
     const needs_libdwarf = target.result.os.tag.isDarwin();
     if (needs_libdwarf) libdwarf = buildDwarf(b, config);
-    const awaiting_libdwarf = libdwarf == null and needs_libdwarf;
 
-    const awaiting_platform_specific = awaiting_bu or awaiting_eu or awaiting_libdwarf;
-    const upstream = b.lazyDependency("kcov", .{});
-    if (upstream == null or awaiting_platform_specific) return null;
-
+    const upstream = b.dependency("kcov", .{});
     const self = b.allocator.create(Self) catch @panic("OOM");
     self.* = .{
         .b = b,
         .metadata = .{
-            .upstream = upstream.?,
+            .upstream = upstream,
             .config = config,
-            .root = upstream.?.path(""),
-            .include = upstream.?.path("src/include"),
+            .root = upstream.path(""),
+            .include = upstream.path("src/include"),
         },
         .curl = curl,
         .binutils = binutils,
@@ -99,8 +93,7 @@ pub fn build(b: *std.Build, curl: *CurlBuilder) ?*Self {
 /// Compiles libdwarf from source as a static library.
 /// https://github.com/davea42/libdwarf-code
 fn buildDwarf(b: *std.Build, config: Config) ?Artifact {
-    const upstream_dep = b.lazyDependency("libdwarf", .{});
-    if (upstream_dep == null) return null;
+    const upstream = b.dependency("libdwarf", .{});
 
     const target = config.target;
     const mod = b.createModule(.{
@@ -109,7 +102,6 @@ fn buildDwarf(b: *std.Build, config: Config) ?Artifact {
         .link_libc = true,
     });
 
-    const upstream = upstream_dep.?;
     const root = upstream.path(dwarf.root);
     mod.addIncludePath(root);
     mod.addCSourceFiles(.{

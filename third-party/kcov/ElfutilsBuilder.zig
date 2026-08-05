@@ -35,20 +35,19 @@ libdw: Artifact = undefined,
 /// Only available on linux.
 ///
 /// https://github.com/allyourcodebase/elfutils
-pub fn build(b: *std.Build, config: Config) ?*Self {
+pub fn build(b: *std.Build, config: Config) *Self {
     const libargp = buildArgp(b, config);
-    const upstream = b.lazyDependency("elfutils", .{});
-    if (libargp == null or upstream == null) return null;
+    const upstream = b.dependency("elfutils", .{});
 
     const self = b.allocator.create(Self) catch @panic("OOM");
     self.* = .{
         .b = b,
         .metadata = .{
-            .upstream = upstream.?,
+            .upstream = upstream,
             .config = config,
             .config_header = elfutils.configHeader(b, config),
         },
-        .libargp = libargp.?,
+        .libargp = libargp,
         .zlib_dep = zlib.build(b, config),
         .zstd_dep = zstd.build(b, config),
     };
@@ -63,8 +62,8 @@ pub fn build(b: *std.Build, config: Config) ?*Self {
 
 /// Compiles argp-standalone from source as a static library.
 /// https://github.com/allyourcodebase/argp-standalone
-fn buildArgp(b: *std.Build, config: Config) ?Artifact {
-    const upstream_dep = b.lazyDependency("argp", .{});
+fn buildArgp(b: *std.Build, config: Config) Artifact {
+    const upstream = b.dependency("argp", .{});
     const target = config.target;
     const mod = b.createModule(.{
         .target = target,
@@ -92,27 +91,25 @@ fn buildArgp(b: *std.Build, config: Config) ?Artifact {
         .have_strndup = have_strndup,
     });
 
-    if (upstream_dep) |upstream| {
-        const root = upstream.path("");
-        if (!have_strchrnul) mod.addCSourceFile(.{ .file = root.path(b, "strchrnul.c") });
-        if (!have_strndup) mod.addCSourceFile(.{ .file = root.path(b, "strndup.c") });
-        if (!have_mempcpy) mod.addCSourceFile(.{ .file = root.path(b, "mempcpy.c") });
+    const root = upstream.path("");
+    if (!have_strchrnul) mod.addCSourceFile(.{ .file = root.path(b, "strchrnul.c") });
+    if (!have_strndup) mod.addCSourceFile(.{ .file = root.path(b, "strndup.c") });
+    if (!have_mempcpy) mod.addCSourceFile(.{ .file = root.path(b, "mempcpy.c") });
 
-        mod.addConfigHeader(config_header);
-        mod.addCMacro("HAVE_CONFIG_H", "1");
-        mod.addIncludePath(root);
-        mod.addCSourceFiles(.{
-            .root = root,
-            .files = &argp.sources,
-        });
+    mod.addConfigHeader(config_header);
+    mod.addCMacro("HAVE_CONFIG_H", "1");
+    mod.addIncludePath(root);
+    mod.addCSourceFiles(.{
+        .root = root,
+        .files = &argp.sources,
+    });
 
-        const lib = b.addLibrary(.{
-            .name = "argp",
-            .root_module = mod,
-        });
-        lib.installHeader(upstream.path("argp.h"), "argp.h");
-        return lib;
-    } else return null;
+    const lib = b.addLibrary(.{
+        .name = "argp",
+        .root_module = mod,
+    });
+    lib.installHeader(upstream.path("argp.h"), "argp.h");
+    return lib;
 }
 
 fn buildEu(self: *const Self) Artifact {
