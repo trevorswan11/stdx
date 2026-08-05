@@ -47,11 +47,14 @@ pub fn allowedTarget(target: std.Build.ResolvedTarget) bool {
 
 /// Builds kcov from source.
 /// https://github.com/allyourcodebase/kcov
-pub fn build(b: *std.Build, curl: *CurlBuilder) ?*Self {
-    const config = curl.metadata.config;
-    const target = config.target;
+pub fn build(b: *std.Build, target: std.Build.ResolvedTarget) ?*Self {
+    const config: Dependency.Config = .{
+        .target = target,
+        .optimize = .ReleaseFast,
+    };
     if (!allowedTarget(target)) return null;
 
+    const curl = CurlBuilder.build(b, config);
     var binutils: ?*BinutilsBuilder = null;
     const needs_binutils = target.result.cpu.arch.isX86();
     if (needs_binutils) binutils = BinutilsBuilder.build(b, config);
