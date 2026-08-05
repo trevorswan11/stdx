@@ -47,7 +47,8 @@ pub fn allowedTarget(target: std.Build.ResolvedTarget) bool {
 
 /// Builds kcov from source.
 /// https://github.com/allyourcodebase/kcov
-pub fn build(b: *std.Build, curl: *CurlBuilder, config: Config) ?*Self {
+pub fn build(b: *std.Build, curl: *CurlBuilder) ?*Self {
+    const config = curl.metadata.config;
     const target = config.target;
     if (!allowedTarget(target)) return null;
 

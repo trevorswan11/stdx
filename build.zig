@@ -82,10 +82,7 @@ pub fn build(b: *std.Build) !void {
     b.installArtifact(curl.libcurl);
     b.installArtifact(curl.execurl);
 
-    const kcov_builder = KcovBuilder.build(b, curl, .{
-        .target = target,
-        .optimize = .ReleaseFast,
-    });
+    const kcov_builder = KcovBuilder.build(b, curl);
     if (kcov_builder) |kcov| b.installArtifact(kcov.kcov_exe);
 
     var cppcheck_art: ?*std.Build.Step.Compile = null;
