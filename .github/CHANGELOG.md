@@ -152,3 +152,7 @@
 # v2.5.0
 
 - Add curl as a linkable library on platforms that don't support kcov
+
+# v2.5.1
+
+- Fix an issue where lazy imports would not be bubbled up when needed
