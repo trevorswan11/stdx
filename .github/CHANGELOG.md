@@ -156,3 +156,7 @@
 # v2.5.1
 
 - Fix an issue where lazy imports would not be bubbled up when needed
+
+# v2.6.0
+
+- Add function implementation to substitute `std::function` 
