@@ -28,7 +28,7 @@ template <MappableEnum E, typename Value> class enum_map {
   public:
     // Default initializes every spot in the map
     constexpr enum_map() noexcept
-        requires std::is_default_constructible_v<Value>
+        requires DefaultConstructible<Value>
     = default;
 
     // Creates a new value with the provided args at every slot
