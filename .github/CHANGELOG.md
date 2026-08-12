@@ -160,3 +160,7 @@
 # v2.6.0
 
 - Add function implementation to substitute `std::function` 
+
+# v2.6.1
+
+- Allow enum map to be default constructed when possible to support move only types more seamlessly

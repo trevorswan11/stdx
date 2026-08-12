@@ -26,8 +26,15 @@ template <MappableEnum E, typename Value> class enum_map {
     MAKE_UNALIASED_ITERATOR(map, map_)
 
   public:
+    // Default initializes every spot in the map
+    constexpr enum_map() noexcept
+        requires std::is_default_constructible_v<Value>
+    = default;
+
     // Creates a new value with the provided args at every slot
-    template <typename... Args> constexpr explicit enum_map(Args&&... args) noexcept {
+    template <typename... Args>
+        requires(sizeof...(Args) > 0)
+    constexpr explicit enum_map(Args&&... args) noexcept {
         map_.fill(Value{std::forward<Args>(args)...});
     }
 

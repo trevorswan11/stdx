@@ -7,6 +7,7 @@
 #include "stdx/fixed/enum_map.hh"
 #include "stdx/option.hh"
 #include "stdx/types.hh"
+#include "stdx/utility.hh"
 
 namespace stdx::tests {
 
@@ -76,6 +77,44 @@ TEST_CASE("Non-monotonic enum map") {
     CHECK(map[non_monotonic_enum::B] == 0xDEADBEEF);
     CHECK(map[non_monotonic_enum::C] == 0xDEADBEEF);
     CHECK(map[non_monotonic_enum::D] == 0xC0FFEE);
+}
+
+TEST_CASE("Move-only type enum map") {
+    struct move_only_type {
+        i32 value{0};
+
+        move_only_type() = default;
+        explicit move_only_type(i32 v) : value{v} {}
+        ~move_only_type() = default;
+        MAKE_MOVE_ONLY(move_only_type);
+    };
+
+    SECTION("Default construction with move-only value") {
+        fixed::enum_map<mock_enum, move_only_type> map;
+        CHECK(map.size() == 4);
+        for (const auto& item : map) { CHECK(item.value == 0); }
+    }
+
+    SECTION("Default construction with move-only option") {
+        fixed::enum_map<mock_enum, option<move_only_type>> map;
+        CHECK(map.size() == 4);
+        for (const auto& item : map) { CHECK_FALSE(item); }
+
+        map[mock_enum::A].emplace(100);
+        CHECK(map[mock_enum::A]);
+        CHECK(map[mock_enum::A]->value == 100);
+        CHECK_FALSE(map[mock_enum::B]);
+    }
+
+    SECTION("Move construction and assignment") {
+        fixed::enum_map<mock_enum, option<move_only_type>> map;
+        map[mock_enum::B].emplace(42);
+
+        auto moved_map{std::move(map)};
+        CHECK(moved_map[mock_enum::B]);
+        CHECK(moved_map[mock_enum::B]->value == 42);
+        CHECK_FALSE(moved_map[mock_enum::A]);
+    }
 }
 
 TEST_CASE("fixed::enum_map ranges compatibility") {
