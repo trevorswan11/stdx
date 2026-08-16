@@ -29,15 +29,20 @@ pub const libarchive = @import("third-party/libarchive.zig");
 pub const abseil = @import("third-party/abseil.zig");
 pub const re2 = @import("third-party/fuzztest/re2.zig");
 
-pub var addFrameworkSearchPaths: *const fn (
-    mod: *std.Build.Module,
-    target: std.Build.ResolvedTarget,
-) void = defaultAddFrameworkSearchPaths;
+var xcode_frameworks_path: ?[]const u8 = null;
 
-pub fn defaultAddFrameworkSearchPaths(mod: *std.Build.Module, target: std.Build.ResolvedTarget) void {
-    if (target.result.os.tag != .macos) return;
+pub fn addFrameworkSearchPaths(mod: *std.Build.Module, target: std.Build.ResolvedTarget) void {
+    if (!target.result.os.tag.isDarwin()) return;
     const b = mod.owner;
-    if (b.graph.environ_map.get("SDKROOT")) |sdkroot| {
+
+    if (xcode_frameworks_path) |root| {
+        mod.addSystemFrameworkPath(.{ .cwd_relative = b.fmt("{s}/Frameworks", .{root}) });
+        mod.addSystemIncludePath(.{ .cwd_relative = b.fmt("{s}/include", .{root}) });
+        mod.addLibraryPath(.{ .cwd_relative = b.fmt("{s}/lib", .{root}) });
+        return;
+    }
+
+    if (b.sysroot orelse b.graph.environ_map.get("SDKROOT")) |sdkroot| {
         mod.addFrameworkPath(.{ .cwd_relative = b.fmt("{s}/System/Library/Frameworks", .{sdkroot}) });
         mod.addSystemIncludePath(.{ .cwd_relative = b.fmt("{s}/usr/include", .{sdkroot}) });
     }
@@ -47,6 +52,7 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
 
+    xcode_frameworks_path = b.option([]const u8, "xcode_frameworks_path", "Path to xcode_frameworks root directory") orelse xcode_frameworks_path;
     const building_for_dep = b.option(bool, "building_for_dep", "Build for a dependency") orelse false;
     const run_cdb_gen = b.option(bool, "run_cdb_gen", "Run cdb generation") orelse true;
     const packaging = b.option(bool, "packaging", "Don't compile catch2 or cppcheck") orelse false;
@@ -301,6 +307,7 @@ fn buildStdx(b: *std.Build, config: struct {
             .link_libraries = link_libraries.wrapped.items,
         }),
     });
+    addFrameworkSearchPaths(libstdx.root_module, target);
     for (dependecies) |dep| libstdx.installLibraryHeaders(dep.artifact);
 
     libstdx.installConfigHeader(config_h);
