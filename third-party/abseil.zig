@@ -6,6 +6,8 @@ const ArrayList = @import("../build-utils/array_list.zig").ArrayList;
 
 const abseil = @import("sources/abseil.zig");
 
+const root_build = @import("../build.zig");
+
 /// Compiles zlib from source as a static library
 /// https://github.com/allyourcodebase/abseil
 pub fn build(b: *std.Build, config: Config) Dependency {
@@ -23,7 +25,7 @@ pub fn build(b: *std.Build, config: Config) Dependency {
     switch (config.target.result.os.tag) {
         .windows => mod.linkSystemLibrary("dbghelp", .{}),
         .macos => {
-            Dependency.addFrameworkSearchPaths(mod, config.target);
+            root_build.addFrameworkSearchPaths(mod, config.target);
             mod.linkFramework("CoreFoundation", .{});
         },
         else => {},

@@ -13,6 +13,8 @@ const ElfutilsBuilder = @import("ElfutilsBuilder.zig");
 const dwarf = @import("sources/dwarf.zig");
 const kcov = @import("sources/kcov.zig");
 
+const root_build = @import("../../build.zig");
+
 const Metadata = struct {
     upstream: *std.Build.Dependency,
     config: Config,
@@ -294,7 +296,7 @@ fn buildKcov(self: *const Self) Artifact {
     }
 
     mod.linkLibrary(self.curl.libcurl);
-    Dependency.addFrameworkSearchPaths(mod, target);
+    root_build.addFrameworkSearchPaths(mod, target);
     mod.linkLibrary(self.curl.zlib_dep.artifact);
 
     if (self.elfutils) |elfutils| {

@@ -29,6 +29,20 @@ pub const libarchive = @import("third-party/libarchive.zig");
 pub const abseil = @import("third-party/abseil.zig");
 pub const re2 = @import("third-party/fuzztest/re2.zig");
 
+pub var addFrameworkSearchPaths: *const fn (
+    mod: *std.Build.Module,
+    target: std.Build.ResolvedTarget,
+) void = defaultAddFrameworkSearchPaths;
+
+pub fn defaultAddFrameworkSearchPaths(mod: *std.Build.Module, target: std.Build.ResolvedTarget) void {
+    if (target.result.os.tag != .macos) return;
+    const b = mod.owner;
+    if (b.graph.environ_map.get("SDKROOT")) |sdkroot| {
+        mod.addFrameworkPath(.{ .cwd_relative = b.fmt("{s}/System/Library/Frameworks", .{sdkroot}) });
+        mod.addSystemIncludePath(.{ .cwd_relative = b.fmt("{s}/usr/include", .{sdkroot}) });
+    }
+}
+
 pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});

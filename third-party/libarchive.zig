@@ -8,6 +8,8 @@ const libarchive = @import("sources/libarchive.zig");
 const zlib = @import("zlib.zig");
 const zstd = @import("zstd.zig");
 
+const root_build = @import("../build.zig");
+
 /// Compiles libarchive from source as a static library.
 /// https://github.com/allyourcodebase/libarchive
 pub fn build(b: *std.Build, config: Config) Dependency {
@@ -18,7 +20,7 @@ pub fn build(b: *std.Build, config: Config) Dependency {
         .target = target,
         .optimize = config.optimize,
     });
-    Dependency.addFrameworkSearchPaths(mod, target);
+    root_build.addFrameworkSearchPaths(mod, target);
 
     const zlib_dep = zlib.build(b, config);
     mod.linkLibrary(zlib_dep.artifact);

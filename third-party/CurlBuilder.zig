@@ -9,6 +9,7 @@ const mbedtls = @import("sources/mbedtls.zig");
 
 const zlib = @import("zlib.zig");
 const zstd = @import("zstd.zig");
+const root_build = @import("../build.zig");
 
 const c_flags: []const []const u8 = &.{"-fvisibility=hidden"};
 
@@ -159,7 +160,7 @@ fn buildCurlLib(self: *const Self) Artifact {
         .optimize = self.metadata.config.optimize,
         .link_libc = true,
     });
-    Dependency.addFrameworkSearchPaths(mod, target);
+    root_build.addFrameworkSearchPaths(mod, target);
 
     mod.addCMacro("BUILDING_LIBCURL", "1");
     mod.addCMacro("CURL_STATICLIB", "1");
@@ -217,7 +218,7 @@ fn buildCurlExe(self: *const Self) Artifact {
         .optimize = self.metadata.config.optimize,
         .link_libc = true,
     });
-    Dependency.addFrameworkSearchPaths(mod, target);
+    root_build.addFrameworkSearchPaths(mod, target);
 
     mod.addCMacro("HAVE_CONFIG_H", "1");
     mod.addCMacro("CURL_STATICLIB", "1");

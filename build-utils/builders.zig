@@ -1,13 +1,13 @@
 const std = @import("std");
 
 const ProjectPaths = @import("ProjectPaths.zig");
-const Dependency = @import("../third-party/Dependency.zig");
 const ArrayList = @import("array_list.zig").ArrayList;
 
 const utils = @import("utils.zig");
 const catch2 = @import("../third-party/catch2.zig");
 const libarchive = @import("../third-party/libarchive.zig");
 
+const root_build = @import("../build.zig");
 pub const stdx_profile_define = "-DSTDX_PROFILE";
 
 fn BuildHarnessTestConfig(Stdx: type) type {
@@ -176,7 +176,7 @@ pub fn fuzzTest(b: *std.Build, config: BuildFuzzTestConfig) *std.Build.Step.Comp
         },
         .link_libraries = link_libraries.wrapped.items,
     }, config.executable_config);
-    Dependency.addFrameworkSearchPaths(test_exe.root_module, config.target);
+    root_build.addFrameworkSearchPaths(test_exe.root_module, config.target);
 
     test_exe.root_module.addCSourceFiles(.{
         .root = harness_path,
@@ -219,6 +219,6 @@ pub fn compressor(b: *std.Build) *std.Build.Step.Compile {
         .name = "compressor",
         .behavior = .standalone,
     });
-    Dependency.addFrameworkSearchPaths(compressor_exe.root_module, b.graph.host);
+    root_build.addFrameworkSearchPaths(compressor_exe.root_module, b.graph.host);
     return compressor_exe;
 }

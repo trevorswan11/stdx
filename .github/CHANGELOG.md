@@ -164,3 +164,7 @@
 # v2.6.1
 
 - Allow enum map to be default constructed when possible to support move only types more seamlessly
+
+# v2.6.2
+
+- Allow overriding `addFrameworkSearchPaths` in root build

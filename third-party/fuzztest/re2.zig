@@ -5,6 +5,7 @@ const Config = Dependency.Config;
 const Artifact = Dependency.Artifact;
 
 const re2 = @import("sources/re2.zig");
+const root_build = @import("../../build.zig");
 
 pub fn build(b: *std.Build, abseil: Dependency, config: Config) Dependency {
     const upstream = b.dependency("re2", .{});
@@ -13,7 +14,7 @@ pub fn build(b: *std.Build, abseil: Dependency, config: Config) Dependency {
         .optimize = config.optimize,
         .link_libcpp = true,
     });
-    Dependency.addFrameworkSearchPaths(mod, config.target);
+    root_build.addFrameworkSearchPaths(mod, config.target);
 
     const root = upstream.path("");
     mod.addSystemIncludePath(root);

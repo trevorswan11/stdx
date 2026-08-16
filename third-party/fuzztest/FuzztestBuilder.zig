@@ -6,6 +6,7 @@ const Artifact = Dependency.Artifact;
 const GTestBuilder = @import("GTestBuilder.zig");
 
 const fuzztest_mod = @import("sources/fuzztest.zig");
+const root_build = @import("../../build.zig");
 
 const Self = @This();
 
@@ -105,6 +106,6 @@ fn addModule(self: *const Self, sources: []const []const u8) *std.Build.Module {
         .files = sources,
         .flags = &.{ "-std=c++23", "-DCENTIPEDE_DISABLE_RIEGELI" },
     });
-    Dependency.addFrameworkSearchPaths(mod, self.metadata.config.target);
+    root_build.addFrameworkSearchPaths(mod, self.metadata.config.target);
     return mod;
 }
