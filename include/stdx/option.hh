@@ -158,6 +158,7 @@ template <Compactable T> class compact_opt {
     }
 
     [[nodiscard]] constexpr auto get(this auto&& self) noexcept -> auto* { return &self.value(); }
+    [[nodiscard]] constexpr auto raw(this auto&& self) noexcept -> auto* { return &self.value_; }
     [[nodiscard]] constexpr auto operator->(this auto&& self) noexcept -> auto* {
         return self.get();
     }

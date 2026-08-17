@@ -168,3 +168,7 @@
 # v2.6.2
 
 - Allow overriding `addFrameworkSearchPaths` in root build
+
+# v2.6.3
+
+- Provide a `raw` function for compact opt for unchecked access
