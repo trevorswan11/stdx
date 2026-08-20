@@ -67,3 +67,7 @@ auto launch(i32 argc, char** argv) -> i32 {
     return result;
 }
 }
+
+#ifndef STDX_NO_MAIN
+auto main(i32 argc, char** argv) -> i32 { return launch(argc, argv); }
+#endif

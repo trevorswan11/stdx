@@ -198,16 +198,17 @@ if(STDX_BUILD_TESTS)
         find_package(Catch2 REQUIRED)
     endif()
 
-    if(TARGET Catch2::Catch2WithMain)
-        set(CATCH2_TARGET Catch2::Catch2WithMain)
+    if(TARGET Catch2::Catch2)
+        set(CATCH2_TARGET Catch2::Catch2)
     else()
-        set(CATCH2_TARGET Catch2WithMain)
+        set(CATCH2_TARGET Catch2)
     endif()
 
     # Collect test source files
     file(GLOB_RECURSE STDX_TEST_SOURCES
         "tests/*.cc"
     )
+    list(APPEND STDX_TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/tools/harness/runner.cc")
 
     if(MINGW)
         add_link_options("-static-libgcc" "-static-libstdc++" "-static")

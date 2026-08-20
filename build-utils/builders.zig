@@ -88,10 +88,13 @@ pub fn strappedTest(b: *std.Build, config: BuildStrappedTestConfig) *std.Build.S
         .link_libraries = link_libraries.wrapped.items,
     }, config.executable_config);
 
+    var runner_cxx_flags = ArrayList([]const u8).fromSlice(b, config.cxx_flags);
+    runner_cxx_flags.append("-DSTDX_NO_MAIN");
+
     test_exe.root_module.addCSourceFiles(.{
         .root = harness_path,
         .files = &.{ "runner.cc", "allocator.cc" },
-        .flags = config.cxx_flags,
+        .flags = runner_cxx_flags.wrapped.items,
     });
 
     if (config.profile) {
