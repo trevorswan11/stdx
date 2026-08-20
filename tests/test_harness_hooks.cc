@@ -1,0 +1,37 @@
+#include <cstdlib>
+
+#include <catch2/catch_test_macros.hpp>
+
+#include "stdx/harness/hooks.hh"
+#include "stdx/types.hh"
+
+namespace {
+
+bool pre_session_hook_ran{false};
+bool pre_main_hook_ran{false};
+bool g_post_session_hook_ran{false};
+
+struct post_hook_verifier {
+    ~post_hook_verifier() {
+        if (pre_session_hook_ran && !g_post_session_hook_ran) { std::abort(); }
+    }
+};
+
+[[maybe_unused]] post_hook_verifier g_verifier;
+
+} // namespace
+
+extern "C" {
+auto harness_pre_session() -> void { pre_session_hook_ran = true; }
+
+auto harness_pre_main(i32 argc, char** argv) -> void {
+    if (argc > 0 && argv) { pre_main_hook_ran = true; }
+}
+
+auto harness_post_session() -> void { g_post_session_hook_ran = true; }
+}
+
+TEST_CASE("Harness pre and post hooks execution") {
+    CHECK(pre_session_hook_ran);
+    CHECK(pre_main_hook_ran);
+}

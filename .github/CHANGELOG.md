@@ -172,3 +172,7 @@
 # v2.6.3
 
 - Provide a `raw` function for compact opt for unchecked access
+
+# v2.7.0
+
+- Provide the ability for consumers to define pre and post hooks around Catch2's launcher

@@ -6,10 +6,9 @@
 #include <fuzztest/fuzztest.h>
 #include <fuzztest/init_fuzztest.h>
 #include <gtest/gtest.h>
+#include <stdx/harness/hooks.hh>
 #include <stdx/profiler.hh>
 #include <stdx/types.hh>
-
-#include "hooks.hh"
 
 namespace {
 
