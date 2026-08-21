@@ -25,6 +25,16 @@ export fn harness_begin_test() callconv(.c) void {
     test_start_bytes = instrumentor.byte_counter.load(.acquire);
 }
 
+export fn harness_pause_tracking() callconv(.c) void {
+    instrumentor_active = false;
+}
+export fn harness_resume_tracking() callconv(.c) void {
+    instrumentor_active = true;
+}
+export fn harness_is_tracking_active() callconv(.c) bool {
+    return instrumentor_active;
+}
+
 export fn harness_end_test(test_name: [*:0]const u8) callconv(.c) void {
     const current_nodes = instrumentor.node_counter.load(.acquire);
     if (current_nodes > test_start_nodes) {
