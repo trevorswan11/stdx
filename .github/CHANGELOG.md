@@ -176,3 +176,7 @@
 # v2.7.0
 
 - Provide the ability for consumers to define pre and post hooks around Catch2's launcher
+
+# v2.7.1
+
+- Resolve a bug where pre-init and post-init meory tracking would crash hooked programs
