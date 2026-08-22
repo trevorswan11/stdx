@@ -6,6 +6,9 @@ extern "c" fn atexit(func: *const fn () callconv(.c) void) c_int;
 
 var instrumentor: Instrumentor = undefined;
 var instrumentor_active = false;
+
+// True once `instrumentor` holds a live, initialized value
+var instrumentor_ready = false;
 var launch_result: u8 = 0;
 
 // When true, atexitReport bases the leak verdict on test_leaked
@@ -106,11 +109,13 @@ const Instrumentor = struct {
     node_counter: std.atomic.Value(u64) = .init(0),
     byte_counter: std.atomic.Value(u64) = .init(0),
 
-    live_lock: std.Io.Mutex = .init,
+    // A plain atomic spinlock for pre-init locking
+    live_lock: std.atomic.Mutex = .unlocked,
     live_allocations: std.AutoHashMap(usize, void),
 
     pub fn init(io: std.Io) Instrumentor {
         instrumentor_active = true;
+        instrumentor_ready = true;
         return .{
             .io = io,
             .live_allocations = .init(internal_allocator),
@@ -119,6 +124,7 @@ const Instrumentor = struct {
 
     pub fn deinit(self: *Instrumentor) void {
         instrumentor_active = false;
+        instrumentor_ready = false;
         self.live_allocations.deinit();
         if (self.args) |*args| {
             freeArgs(internal_allocator, &args.zig_conv);
@@ -158,7 +164,7 @@ const Instrumentor = struct {
         return .{ .argc = @intCast(c_args.len), .argv = c_args.ptr };
     }
 
-    const AllocError = error{ AllocationFailed, PtrStoreFailed, LockFailed };
+    const AllocError = error{ AllocationFailed, PtrStoreFailed };
 
     fn alloc(self: *Instrumentor, size: usize) AllocError!*anyopaque {
         const alignment = comptime @max(16, @alignOf(std.c.max_align_t));
@@ -168,7 +174,10 @@ const Instrumentor = struct {
         _ = self.total_alloc.fetchAdd(@intCast(total), .acq_rel);
         _ = self.node_counter.fetchAdd(1, .acq_rel);
 
-        const mem = internal_allocator.alloc(u8, total) catch return error.AllocationFailed;
+        const mem = internal_allocator.alloc(u8, total) catch |err| {
+            std.log.err("harness: underlying allocation of {d} bytes failed: {s}", .{ total, @errorName(err) });
+            return error.AllocationFailed;
+        };
         errdefer internal_allocator.free(mem);
         const base_ptr = mem.ptr;
 
@@ -179,7 +188,7 @@ const Instrumentor = struct {
                 alignment,
             );
 
-            const result = try self.putKey(ptr);
+            const result = self.putKey(ptr);
             break :blk result orelse return error.PtrStoreFailed;
         };
 
@@ -196,14 +205,14 @@ const Instrumentor = struct {
         return @ptrFromInt(aligned_ptr);
     }
 
-    const DeallocError = error{ InvalidFree, HeapCorruption, LockFailed };
+    const DeallocError = error{ InvalidFree, HeapCorruption };
 
     fn dealloc(self: *Instrumentor, ptr: ?*anyopaque) DeallocError!void {
         const p = ptr orelse return;
 
         // Locks are manual here to prevent two lock/unlock cycles in one function
-        self.live_lock.lock(self.io) catch return error.LockFailed;
-        defer self.live_lock.unlock(self.io);
+        self.lockLive();
+        defer self.live_lock.unlock();
 
         const key = @intFromPtr(p);
         if (!self.containsKey(key)) {
@@ -231,13 +240,33 @@ const Instrumentor = struct {
         internal_allocator.free(slice);
     }
 
-    // Handles the locks itself
-    pub fn putKey(self: *Instrumentor, key: usize) error{LockFailed}!?usize {
-        self.live_lock.lock(self.io) catch return error.LockFailed;
-        defer self.live_lock.unlock(self.io);
+    fn lockLive(self: *Instrumentor) void {
+        while (!self.live_lock.tryLock()) {
+            std.atomic.spinLoopHint();
+        }
+    }
 
-        if (self.live_allocations.contains(key)) return null;
-        self.live_allocations.put(key, {}) catch return null;
+    // Handles the locks itself
+    pub fn putKey(self: *Instrumentor, key: usize) ?usize {
+        self.lockLive();
+        defer self.live_lock.unlock();
+
+        if (self.live_allocations.contains(key)) {
+            std.log.err("harness: address 0x{x} already tracked as live (live={d})", .{
+                key,
+                self.live_allocations.count(),
+            });
+            return null;
+        }
+
+        self.live_allocations.put(key, {}) catch |err| {
+            std.log.err("harness: failed to track 0x{x}: {s} (live={d})", .{
+                key,
+                @errorName(err),
+                self.live_allocations.count(),
+            });
+            return null;
+        };
         return key;
     }
 
@@ -336,16 +365,16 @@ fn deallocInternal(ptr: *anyopaque) void {
 }
 
 export fn dealloc(ptr: ?*anyopaque) callconv(.c) void {
-    if (!instrumentor_active) {
+    if (!instrumentor_ready) {
         @branchHint(.unlikely);
         const p = ptr orelse return;
         return deallocInternal(p);
     }
 
+    // Always consult the tracker here even while tracking is paused
     instrumentor.dealloc(ptr) catch |err| switch (err) {
         error.InvalidFree => deallocInternal(ptr.?),
         error.HeapCorruption => @panic("Heap corruption detected: allocated block has malformed header"),
-        error.LockFailed => @panic("IO Error: Failed to obtain lock"),
     };
 }
 
