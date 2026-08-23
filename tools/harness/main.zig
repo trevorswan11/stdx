@@ -69,7 +69,9 @@ fn atexitReport() callconv(.c) void {
         const leak_bit: u8 = @intFromBool(per_test_leak or process_leak);
         std.c._exit(@intCast(launch_result | leak_bit));
     } else {
-        std.log.warn("leaks were detected but were ignored in exit code", .{});
+        if (per_test_leak or process_leak) {
+            std.log.warn("leaks were detected but were ignored in exit code", .{});
+        }
         std.c._exit(@intCast(launch_result));
     }
 }
