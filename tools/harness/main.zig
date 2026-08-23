@@ -1,4 +1,5 @@
 const std = @import("std");
+const build_opts = @import("build_opts");
 const testing = std.testing;
 
 extern "c" fn launch(c_int, [*c][*c]u8) c_int;
@@ -63,9 +64,14 @@ fn atexitReport() callconv(.c) void {
     }
     const per_test_leak = test_leaked.load(.acquire);
     const process_leak = !per_test_detection_used and instrumentor.node_counter.load(.acquire) > 0;
-    const leak_bit: u8 = @intFromBool(per_test_leak or process_leak);
     instrumentor.deinit();
-    std.c._exit(@intCast(launch_result | leak_bit));
+    if (build_opts.fail_on_leak) {
+        const leak_bit: u8 = @intFromBool(per_test_leak or process_leak);
+        std.c._exit(@intCast(launch_result | leak_bit));
+    } else {
+        std.log.warn("leaks were detected but were ignored in exit code", .{});
+        std.c._exit(@intCast(launch_result));
+    }
 }
 
 pub fn main(init: std.process.Init) !void {

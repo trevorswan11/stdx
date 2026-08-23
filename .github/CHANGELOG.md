@@ -180,3 +180,7 @@
 # v2.7.1
 
 - Resolve a bug where pre-init and post-init meory tracking would crash hooked programs
+
+# v2.8.0
+
+- Allow leak-erroring to be disabled in strapped tests and fuzz tests orchestrated by zig

@@ -19,6 +19,7 @@ fn BuildHarnessTestConfig(Stdx: type) type {
         cxx_files: []const []const u8,
         cxx_flags: []const []const u8,
         profile: bool,
+        fail_on_leak: bool = true,
         /// Catch2 and libstdx are added automatically
         link_libraries: []const *std.Build.Step.Compile = &.{},
         include_paths: []const std.Build.LazyPath = &.{},
@@ -88,8 +89,12 @@ pub fn strappedTest(b: *std.Build, config: BuildStrappedTestConfig) *std.Build.S
         .link_libraries = link_libraries.wrapped.items,
     }, config.executable_config);
 
+    const options = b.addOptions();
+    options.addOption(bool, "fail_on_leak", config.fail_on_leak);
+    test_exe.root_module.addImport("build_opts", options.createModule());
+
     var runner_cxx_flags = ArrayList([]const u8).fromSlice(b, config.cxx_flags);
-    runner_cxx_flags.append("-DSTDX_NO_MAIN");
+    runner_cxx_flags.append("-DSTDX_NO_CXX_MAIN");
 
     test_exe.root_module.addCSourceFiles(.{
         .root = harness_path,
@@ -180,6 +185,10 @@ pub fn fuzzTest(b: *std.Build, config: BuildFuzzTestConfig) *std.Build.Step.Comp
         .link_libraries = link_libraries.wrapped.items,
     }, config.executable_config);
     root_build.addFrameworkSearchPaths(test_exe.root_module, config.target);
+
+    const options = b.addOptions();
+    options.addOption(bool, "fail_on_leak", config.fail_on_leak);
+    test_exe.root_module.addImport("build_opts", options.createModule());
 
     test_exe.root_module.addCSourceFiles(.{
         .root = harness_path,
