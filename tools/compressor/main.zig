@@ -66,9 +66,9 @@ pub fn main(init: std.process.Init) !void {
         // File stats for the header
         const stat = try entry.dir.statFile(io, entry.basename, .{});
         c.archive_entry_set_mtime(archive_entry, @intCast(@divTrunc(stat.mtime.nanoseconds, std.time.ns_per_s)), 0);
-        c.archive_entry_set_perm(archive_entry, @intCast(@intFromEnum(stat.permissions)));
 
         if (entry.kind == .directory) {
+            c.archive_entry_set_perm(archive_entry, 0o755);
             c.archive_entry_set_size(archive_entry, 0);
             c.archive_entry_set_filetype(archive_entry, 0o040000);
 
@@ -79,6 +79,7 @@ pub fn main(init: std.process.Init) !void {
             }
             continue;
         } else {
+            c.archive_entry_set_perm(archive_entry, if (looksExecutable(io, entry.dir, entry.basename)) 0o755 else 0o644);
             c.archive_entry_set_size(archive_entry, @intCast(stat.size));
             c.archive_entry_set_filetype(archive_entry, 0o100000);
         }
@@ -100,4 +101,29 @@ pub fn main(init: std.process.Init) !void {
     }
 
     try stderr.flush();
+}
+
+/// Best-effort check for whether a file should carry the execute bit in the archive
+fn looksExecutable(io: std.Io, dir: std.Io.Dir, sub_path: []const u8) bool {
+    const file = dir.openFile(io, sub_path, .{}) catch return false;
+    defer file.close(io);
+
+    var reader_buf: [64]u8 = undefined;
+    var out_buf: [4]u8 = undefined;
+    var reader = file.reader(io, &reader_buf);
+    const n = reader.interface.readSliceShort(&out_buf) catch return false;
+    const magic = out_buf[0..n];
+
+    const prefixes = [_][]const u8{
+        "MZ", // Windows executable/DLL
+        "#!", // shebang script
+        "\x7fELF", // ELF
+        "\xfe\xed\xfa\xce", "\xfe\xed\xfa\xcf", // Mach-O, big endian
+        "\xce\xfa\xed\xfe", "\xcf\xfa\xed\xfe", // Mach-O, little endian
+        "\xca\xfe\xba\xbe", "\xbe\xba\xfe\xca", // Mach-O universal (fat)
+    };
+    for (prefixes) |prefix| {
+        if (std.mem.startsWith(u8, magic, prefix)) return true;
+    }
+    return false;
 }

@@ -184,3 +184,7 @@
 # v2.8.0
 
 - Allow leak-erroring to be disabled in strapped tests and fuzz tests orchestrated by zig
+
+# v2.8.1
+
+- Fix an issue where the compressor would demolish permissions for unix archives when ran on windows
