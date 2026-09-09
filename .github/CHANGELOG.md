@@ -193,3 +193,4 @@
 
 - Fix a diagnostic typo in opt_size assert
 - Have `LOCCounter` to take in a value for the file buffer size
+- Update `ankerl/unordered_dense` to v4.11.0 (latest)

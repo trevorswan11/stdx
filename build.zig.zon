@@ -25,8 +25,8 @@
             .hash = "N-V-__8AALV4EgBbl10jtpTgXbAMeWyE5t24VkpFyu6JKaWR",
         },
         .unordered_dense = .{
-            .url = "https://github.com/martinus/unordered_dense/archive/refs/tags/v4.8.1.tar.gz",
-            .hash = "N-V-__8AAGlLPgDtp5xVf4RWSebI05x30M4e2QYAaY26KyEc",
+            .url = "https://github.com/martinus/unordered_dense/archive/refs/tags/v4.11.0.tar.gz",
+            .hash = "N-V-__8AAEXYqwAJBIvBwC7wfywS0oHX9XHQxU0BnQx5Y2Ry",
         },
         .gsl = .{
             .url = "https://github.com/microsoft/GSL/archive/refs/tags/v4.2.2.tar.gz",
