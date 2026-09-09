@@ -188,3 +188,8 @@
 # v2.8.1
 
 - Fix an issue where the compressor would demolish permissions for unix archives when ran on windows
+
+# v2.8.2
+
+- Fix a diagnostic typo in opt_size assert
+- Have `LOCCounter` to take in a value for the file buffer size

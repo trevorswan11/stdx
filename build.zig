@@ -483,5 +483,5 @@ fn addTooling(b: *std.Build, config: struct {
     var counted_files: ArrayList([]const u8) = .init(b);
     counted_files.appendSlice(paths.zig);
     counted_files.appendSlice(paths.cxx);
-    _ = LOCCounter.init(b, counted_files.wrapped.items);
+    _ = LOCCounter.init(b, .{ .counted_files = counted_files.wrapped.items });
 }

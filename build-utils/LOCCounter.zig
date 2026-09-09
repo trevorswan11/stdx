@@ -62,9 +62,13 @@ const Self = @This();
 
 step: std.Build.Step,
 counted_files: []const []const u8,
+file_buf_size: usize,
 cloc_step: *std.Build.Step,
 
-pub fn init(b: *std.Build, counted_files: []const []const u8) *Self {
+pub fn init(b: *std.Build, options: struct {
+    counted_files: []const []const u8,
+    file_buf_size: usize = 1024 * 100,
+}) *Self {
     const self = b.allocator.create(Self) catch @panic("OOM");
     const cloc_step = b.step("cloc", "Count lines of code across the project");
     self.* = .{
@@ -74,7 +78,8 @@ pub fn init(b: *std.Build, counted_files: []const []const u8) *Self {
             .owner = b,
             .makeFn = count,
         }),
-        .counted_files = counted_files,
+        .counted_files = options.counted_files,
+        .file_buf_size = options.file_buf_size,
         .cloc_step = cloc_step,
     };
 
@@ -88,7 +93,7 @@ fn count(step: *std.Build.Step, _: std.Build.Step.MakeOptions) !void {
     const self: *Self = @fieldParentPtr("step", step);
 
     const build_dir = b.build_root.handle;
-    const buffer = try b.allocator.alloc(u8, 100 * 1024);
+    const buffer = try b.allocator.alloc(u8, self.file_buf_size);
     var result: LOCResult = .init(b.allocator);
 
     for (self.counted_files) |file| {

@@ -316,7 +316,7 @@ class opt_size {
 
     [[nodiscard]] constexpr auto value() const -> usize { return get(); }
     [[nodiscard]] constexpr auto get() const noexcept -> usize {
-        ASSERT(has_value(), "Attempt to access empty optional enum");
+        ASSERT(has_value(), "Attempt to access empty optional size");
         return value_;
     }
 
