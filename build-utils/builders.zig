@@ -234,3 +234,15 @@ pub fn compressor(b: *std.Build) *std.Build.Step.Compile {
     root_build.addFrameworkSearchPaths(compressor_exe.root_module, b.graph.host);
     return compressor_exe;
 }
+
+/// Call with stdx's builder. The runner behind `steps.addPrune`.
+pub fn pruneRunner(b: *std.Build) *std.Build.Step.Compile {
+    return b.addExecutable(.{
+        .name = "prune",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(ProjectPaths.build ++ "Prune.zig"),
+            .target = b.graph.host,
+            .optimize = .Debug,
+        }),
+    });
+}

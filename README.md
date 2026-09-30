@@ -55,6 +55,23 @@ const stdx_dep = b.dependency("stdx", .{
 const libstdx = stdx_dep.artifact("stdx");
 ```
 
+##### Build Maintenance Helpers
+
+`stdx`'s build module also carries helpers for the C++ build itself:
+
+```zig
+const stdx = @import("stdx");
+
+// Hash every header-like file under the given directories into the artifact for cache invalidation
+try stdx.DepStamp.add(b, lib, &.{ "include/", "src/" });
+
+// Deletes superseded .zig-cache generations and zig-out files outside the install graph
+_ = try stdx.steps.addPrune(b, .{ // Declare it after every install step
+    .runner = stdx_dep.artifact("prune"),
+    .protected_roots = &.{b.pathFromRoot("zig-pkg")}, // expensive to rebuild, kept by default
+});
+```
+
 #### For CMake Projects
 
 You can integrate `stdx` into your CMake project using `FetchContent` or by adding it as a subdirectory.

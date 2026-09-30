@@ -263,3 +263,74 @@ pub fn addCoverage(b: *std.Build, config: CoverageConfig) !void {
     coverage.dependOn(&curl.step);
     coverage.dependOn(&install.step);
 }
+
+pub const PruneConfig = struct {
+    /// `stdx_dep.artifact("prune")` from a consumer, `builders.pruneRunner` from stdx itself
+    runner: *std.Build.Step.Compile,
+    /// Entries built only from these absolute directories are kept unless `-Dprune-protected`
+    protected_roots: []const []const u8 = &.{},
+    /// Cache subdirectories whose entries are deleted once they age out
+    aged_dirs: []const []const u8 = &.{ "tmp", "cppcheck", "args" },
+};
+
+/// Adds `prune`, which deletes superseded `.zig-cache` generations and `zig-out` files outside the
+/// install graph. Call it last: the keep-list only sees install steps that already exist.
+pub fn addPrune(b: *std.Build, config: PruneConfig) !*std.Build.Step {
+    const dry_run = b.option(bool, "prune-dry-run", "Print what prune would delete (default: false)") orelse false;
+    const keep = b.option(u32, "prune-keep", "Generations kept per linked artifact (default: 2)") orelse 2;
+    const age_days = b.option(u32, "prune-age-days", "Age for scratch cache entries (default: 14)") orelse 14;
+    const prune_protected = b.option(bool, "prune-protected", "Let prune evict old generations of protected entries (default: false)") orelse false;
+
+    const run = b.addRunArtifact(config.runner);
+    run.has_side_effects = true;
+
+    const cache_root = b.cache_root.path orelse ".";
+    run.addArg(if (std.fs.path.isAbsolute(cache_root)) cache_root else b.pathFromRoot(cache_root));
+    run.addArg(b.install_prefix);
+    run.addFileArg(b.addWriteFiles().add("prune-keep.txt", try installKeepList(b)));
+    run.addArg(b.pathFromRoot("."));
+    for (config.protected_roots) |root| run.addArgs(&.{ "--protect", root });
+    for (config.aged_dirs) |dir| run.addArgs(&.{ "--aged", dir });
+    run.addArgs(&.{ "--keep", b.fmt("{d}", .{keep}), "--age-days", b.fmt("{d}", .{age_days}) });
+    if (dry_run) run.addArg("--dry-run");
+    if (prune_protected) run.addArg("--prune-protected");
+
+    const step = b.step("prune", "Delete superseded .zig-cache generations and stale zig-out files");
+    step.dependOn(&run.step);
+    return step;
+}
+
+/// Every path the install graph writes, as rules for Prune.zig
+fn installKeepList(b: *std.Build) ![]const u8 {
+    var rules: std.ArrayList(u8) = .empty;
+    var visited: std.AutoHashMapUnmanaged(*std.Build.Step, void) = .empty;
+    var pending: std.ArrayList(*std.Build.Step) = .empty;
+    for (b.top_level_steps.values()) |top| try pending.append(b.allocator, &top.step);
+
+    while (pending.pop()) |step| {
+        if ((try visited.getOrPut(b.allocator, step)).found_existing) continue;
+        try pending.appendSlice(b.allocator, step.dependencies.items);
+
+        const owner = step.owner;
+        if (step.cast(std.Build.Step.InstallArtifact)) |install| {
+            const name = install.artifact.name;
+            if (install.dest_dir) |dir| {
+                try rules.print(b.allocator, "F {s}\n", .{owner.getInstallPath(dir, install.dest_sub_path)});
+                try rules.print(b.allocator, "S {s}|lib{s}\n", .{ owner.getInstallPath(dir, ""), name });
+            }
+            for ([_]?std.Build.InstallDir{ install.pdb_dir, install.implib_dir, install.h_dir }) |maybe_dir| {
+                if (maybe_dir) |dir| try rules.print(b.allocator, "S {s}|{s}\n", .{ owner.getInstallPath(dir, ""), name });
+            }
+            // Installed headers keep their own relative paths under the header directory
+            if (install.h_dir) |dir| for (install.artifact.installed_headers.items) |header| switch (header) {
+                .file => |file| try rules.print(b.allocator, "F {s}\n", .{owner.getInstallPath(dir, file.dest_rel_path)}),
+                .directory => |tree| try rules.print(b.allocator, "D {s}\n", .{owner.getInstallPath(dir, tree.dest_rel_path)}),
+            };
+        } else if (step.cast(std.Build.Step.InstallDir)) |install| {
+            try rules.print(b.allocator, "D {s}\n", .{owner.getInstallPath(install.options.install_dir, install.options.install_subdir)});
+        } else if (step.cast(std.Build.Step.InstallFile)) |install| {
+            try rules.print(b.allocator, "F {s}\n", .{owner.getInstallPath(install.dir, install.dest_rel_path)});
+        }
+    }
+    return rules.items;
+}

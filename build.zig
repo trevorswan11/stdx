@@ -3,6 +3,7 @@ const builtin = @import("builtin");
 const zon = @import("build.zig.zon");
 
 pub const CDBGenerator = @import("build-utils/CDBGenerator.zig");
+pub const DepStamp = @import("build-utils/DepStamp.zig");
 pub const RemoveDir = @import("build-utils/RemoveDir.zig");
 pub const LOCCounter = @import("build-utils/LOCCounter.zig");
 pub const CoverageParser = @import("build-utils/CoverageParser.zig");
@@ -49,6 +50,9 @@ pub fn addFrameworkSearchPaths(mod: *std.Build.Module, target: std.Build.Resolve
 }
 
 pub fn build(b: *std.Build) !void {
+    // `verify-deps` re-enters this build to compile its fixture, which needs nothing else
+    if (try addDepTrackingFixture(b)) return;
+
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
 
@@ -121,6 +125,10 @@ pub fn build(b: *std.Build) !void {
     const compressor = builders.compressor(b);
     b.installArtifact(compressor);
 
+    // Consumers run it through `steps.addPrune`
+    const prune_runner = builders.pruneRunner(b);
+    b.installArtifact(prune_runner);
+
     if (!building_for_dep) {
         try addTooling(b, .{
             .cdb_gen = cdb_gen_opt,
@@ -144,7 +152,97 @@ pub fn build(b: *std.Build) !void {
                 },
             },
         });
+
+        addBuildTests(b);
+
+        // Last, so the keep-list sees every install step
+        _ = try steps.addPrune(b, .{
+            .runner = prune_runner,
+            .protected_roots = &.{b.pathFromRoot("zig-pkg")},
+        });
     }
+}
+
+const deptrack_fixture = ProjectPaths.build ++ "fixtures/deptrack/";
+
+/// Builds the fixture copy `verify-deps` points `-Ddeptrack-root` at, with or without the stamp
+fn addDepTrackingFixture(b: *std.Build) !bool {
+    const root = b.option([]const u8, "deptrack-root", "Fixture copy for verify-deps (internal)") orelse return false;
+    const stamp = b.option(bool, "deptrack-stamp", "Add the header stamp to the fixture (internal)") orelse true;
+
+    const mod = b.createModule(.{
+        .target = b.graph.host,
+        .optimize = .Debug,
+        .link_libc = true,
+        .link_libcpp = true,
+    });
+    mod.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ root, "include" }) });
+    mod.addIncludePath(.{ .cwd_relative = b.pathJoin(&.{ root, "include2" }) });
+    mod.addCSourceFiles(.{
+        .root = .{ .cwd_relative = root },
+        .files = &.{ "src/header_user.cc", "src/inc_user.cc", "src/plain.cc" },
+        .flags = &.{"-std=c++20"},
+        .language = .cpp,
+    });
+    const lib = b.addLibrary(.{ .name = "deptrack", .root_module = mod });
+    if (stamp) try DepStamp.add(b, lib, &.{
+        b.pathJoin(&.{ root, "include" }),
+        b.pathJoin(&.{ root, "include2" }),
+        b.pathJoin(&.{ root, "src" }),
+    });
+
+    const exe_mod = b.createModule(.{
+        .target = b.graph.host,
+        .optimize = .Debug,
+        .link_libc = true,
+        .link_libcpp = true,
+    });
+    exe_mod.addCSourceFile(.{
+        .file = .{ .cwd_relative = b.pathJoin(&.{ root, "main.cc" }) },
+        .flags = &.{"-std=c++20"},
+    });
+    exe_mod.linkLibrary(lib);
+    const exe = b.addExecutable(.{ .name = "deptrack", .root_module = exe_mod });
+    const step = b.step("deptrack-fixture", "Build the dependency-tracking fixture (internal)");
+    step.dependOn(&b.addInstallArtifact(exe, .{}).step);
+    return true;
+}
+
+/// `verify-deps` rebuilds the fixture after editing each kind of dependency, with and without the
+/// header stamp. `test-build` also runs the build tooling's unit tests.
+fn addBuildTests(b: *std.Build) void {
+    const runner = b.addExecutable(.{
+        .name = "verify-deps",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path(ProjectPaths.build ++ "VerifyDeps.zig"),
+            .target = b.graph.host,
+            .optimize = .Debug,
+        }),
+    });
+    const verify = b.addRunArtifact(runner);
+    verify.has_side_effects = true;
+    verify.addArgs(&.{
+        b.graph.zig_exe,
+        b.pathFromRoot("."),
+        b.pathFromRoot(deptrack_fixture),
+        b.pathJoin(&.{ b.cache_root.path orelse ".zig-cache", "tmp", "verify-deps" }),
+    });
+    const verify_step = b.step("verify-deps", "Check that editing each kind of C++ dependency triggers a rebuild");
+    verify_step.dependOn(&verify.step);
+
+    const test_step = b.step("test-build", "Run the build tooling's unit tests and verify-deps");
+    inline for (.{ "Prune.zig", "DepStamp.zig" }) |file| {
+        const unit_tests = b.addTest(.{
+            .name = file[0 .. file.len - ".zig".len],
+            .root_module = b.createModule(.{
+                .root_source_file = b.path(ProjectPaths.build ++ file),
+                .target = b.graph.host,
+                .optimize = .Debug,
+            }),
+        });
+        test_step.dependOn(&b.addRunArtifact(unit_tests).step);
+    }
+    test_step.dependOn(&verify.step);
 }
 
 const FuzztestArtifacts = struct {
@@ -308,6 +406,7 @@ fn buildStdx(b: *std.Build, config: struct {
         }),
     });
     addFrameworkSearchPaths(libstdx.root_module, target);
+    try DepStamp.add(b, libstdx, &.{ ProjectPaths.include, ProjectPaths.src });
     for (dependecies) |dep| libstdx.installLibraryHeaders(dep.artifact);
 
     libstdx.installConfigHeader(config_h);
@@ -413,6 +512,8 @@ fn addArtifacts(b: *std.Build, config: struct {
             },
         },
     });
+
+    try DepStamp.add(b, stdx_tests, &.{ ProjectPaths.include, ProjectPaths.tests });
 
     var sample_fuzz_test: ?*std.Build.Step.Compile = null;
     if (fuzztest_artifacts.fuzztest_builder) |fuzztest_builder| {
