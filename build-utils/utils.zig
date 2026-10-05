@@ -201,7 +201,7 @@ pub fn collectFiles(
         } else continue;
 
         if (config.dropped_files) |drop| for (drop) |drop_file| {
-            if (std.mem.eql(u8, drop_file, entry.basename)) continue;
+            if (std.mem.eql(u8, drop_file, entry.basename)) continue :outer;
         };
 
         if (config.dropped_extensions) |drop| for (drop) |drop_file| {

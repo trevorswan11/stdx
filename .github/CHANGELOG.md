@@ -199,3 +199,7 @@
 
 - Add build helper for forcing cache misses on header-file-only changes
 - Add build helper for pruning out of date files in the cache
+
+# v3.0.1
+
+- Fix an issue where `utils.collectFiles` would not skip dropped files correctly
