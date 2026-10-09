@@ -203,3 +203,7 @@
 # v3.0.1
 
 - Fix an issue where `utils.collectFiles` would not skip dropped files correctly
+
+# v3.0.2
+
+- Fix the test harness slowing to a crawl under heavy allocation churn by periodically rehashing tombstones out of its live allocation table

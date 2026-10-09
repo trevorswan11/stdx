@@ -121,6 +121,10 @@ const Instrumentor = struct {
     live_lock: std.atomic.Mutex = .unlocked,
     live_allocations: std.AutoHashMap(usize, void),
 
+    // Upper bound on tombstones in live_allocations
+    live_tombstones: usize = 0,
+    const max_tombstone_fraction = 8;
+
     pub fn init(io: std.Io) Instrumentor {
         instrumentor_active = true;
         instrumentor_ready = true;
@@ -267,6 +271,7 @@ const Instrumentor = struct {
             return null;
         }
 
+        const prev_capacity = self.live_allocations.capacity();
         self.live_allocations.put(key, {}) catch |err| {
             std.log.err("harness: failed to track 0x{x}: {s} (live={d})", .{
                 key,
@@ -275,6 +280,11 @@ const Instrumentor = struct {
             });
             return null;
         };
+
+        // A grow rebuilds the table without tombstones
+        if (self.live_allocations.capacity() != prev_capacity) {
+            self.live_tombstones = 0;
+        }
         return key;
     }
 
@@ -285,7 +295,14 @@ const Instrumentor = struct {
 
     // Does not handle the locks itself!
     pub fn removeKey(self: *Instrumentor, key: usize) bool {
-        return self.live_allocations.remove(key);
+        if (!self.live_allocations.remove(key)) return false;
+
+        self.live_tombstones += 1;
+        if (self.live_tombstones > self.live_allocations.capacity() / max_tombstone_fraction) {
+            self.live_allocations.rehash();
+            self.live_tombstones = 0;
+        }
+        return true;
     }
 
     pub fn report(self: *Instrumentor) void {
@@ -481,6 +498,33 @@ test "Detect header corruption" {
 
     header_ptr.magic = Instrumentor.header_magic;
     try inst.dealloc(ptr);
+}
+
+test "Tracking churn rehashes tombstones" {
+    var inst: Instrumentor = .init(testing.io);
+    defer inst.deinit();
+
+    // Hold the live count just under the 80% grow threshold so only rehashing clears tombstones
+    const live = 800;
+    var ring: [live]*anyopaque = undefined;
+    for (&ring) |*p| p.* = try inst.alloc(8);
+
+    const capacity = inst.live_allocations.capacity();
+    for (0..20 * capacity) |i| {
+        const slot = i % live;
+        try inst.dealloc(ring[slot]);
+        ring[slot] = try inst.alloc(8);
+        try testing.expect(inst.live_tombstones <= capacity / Instrumentor.max_tombstone_fraction);
+    }
+    try testing.expectEqual(capacity, inst.live_allocations.capacity());
+    try testing.expectEqual(live, inst.live_allocations.count());
+
+    for (ring) |p| {
+        try testing.expect(inst.containsKey(@intFromPtr(p)));
+        try inst.dealloc(p);
+    }
+    try testing.expectEqual(0, inst.live_allocations.count());
+    try testing.expectEqual(0, inst.node_counter.load(.acquire));
 }
 
 test "Concurrent allocation stress" {
