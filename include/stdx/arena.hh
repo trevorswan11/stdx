@@ -2,6 +2,8 @@
 
 #include <cstddef>
 #include <limits>
+#include <new>
+#include <type_traits>
 #include <utility>
 
 #include <gsl/pointers>
@@ -20,10 +22,19 @@ constexpr auto DEFAULT_ARENA_BLOCK_SIZE{[] -> usize {
     return static_cast<usize>(64_KiB);
 }()};
 
+template <typename T, usize BlockSize>
+    requires(BlockSize > 0)
+class arena_allocator;
+
 // Do not free returned memory directly!
 template <usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE>
     requires(BlockSize > 0)
 class arena {
+  private:
+    template <typename T, usize B>
+        requires(B > 0)
+    friend class arena_allocator;
+
   public:
     arena() noexcept = default;
     ~arena() { clear(); }
@@ -33,7 +44,8 @@ class arena {
 
     arena(arena&& other) noexcept
         : block_offset_{other.block_offset_}, block_head_{other.block_head_},
-          block_current_{other.block_current_}, cleanup_head_{other.cleanup_head_} {
+          block_current_{other.block_current_}, large_head_{other.large_head_},
+          cleanup_head_{other.cleanup_head_} {
         other.zero();
     }
 
@@ -45,6 +57,7 @@ class arena {
             block_offset_  = other.block_offset_;
             block_head_    = other.block_head_;
             block_current_ = other.block_current_;
+            large_head_    = other.large_head_;
             cleanup_head_  = other.cleanup_head_;
 
             other.zero();
@@ -93,8 +106,11 @@ class arena {
     }
     // cppcheck-suppress-end [unreadVariable, internalAstError]
 
+    // Oversized allocations are released since they cannot be reused
     auto reset() noexcept -> void {
         run_destructors();
+        free_blocks(large_head_);
+        large_head_    = nullptr;
         block_current_ = block_head_;
         block_offset_  = 0;
     }
@@ -103,13 +119,8 @@ class arena {
     auto clear() noexcept -> void {
         PROFILE_FUNCTION();
         run_destructors();
-
-        block* blk{block_head_};
-        while (blk) {
-            block* next{blk->next};
-            ::operator delete(blk);
-            blk = next;
-        }
+        free_blocks(block_head_);
+        free_blocks(large_head_);
         zero();
     }
 
@@ -149,6 +160,36 @@ class arena {
         return alloc(size, align);
     }
 
+    // Allocations that cannot fit in a block get a dedicated region freed on reset/clear
+    [[nodiscard]] auto alloc_large(usize size, usize align) -> void* {
+        PROFILE_FUNCTION();
+        ASSERT(size <= std::numeric_limits<usize>::max() - sizeof(block) - align,
+               "Allocation size overflow");
+        void*      raw{::operator new(sizeof(block) + size + (align - 1))};
+        auto*      blk{new (raw) block{.next = large_head_}};
+        const auto base{reinterpret_cast<uptr>(blk + 1)};
+        large_head_ = blk;
+        return reinterpret_cast<void*>((base + (align - 1)) & ~(align - 1));
+    }
+
+    // Rolls back the most recent allocation if ptr is at the top of the current block
+    auto free_last(void* ptr, usize size) noexcept -> void {
+        if (!block_current_ || !ptr) { return; }
+        const auto raw_addr{reinterpret_cast<uptr>(block_current_ + 1)};
+        const auto addr{reinterpret_cast<uptr>(ptr)};
+        if (addr >= raw_addr && addr + size == raw_addr + block_offset_) {
+            block_offset_ = addr - raw_addr;
+        }
+    }
+
+    static auto free_blocks(block* blk) noexcept -> void {
+        while (blk) {
+            block* next{blk->next};
+            ::operator delete(blk);
+            blk = next;
+        }
+    }
+
     auto register_destructor(void* data, destructor_t destructor) -> void {
         void* node_mem{alloc(sizeof(cleanup_node), alignof(cleanup_node))};
         auto* node{new (node_mem) cleanup_node{
@@ -170,7 +211,8 @@ class arena {
 
     [[nodiscard]] auto alloc(usize size, usize align) -> void* {
         PROFILE_FUNCTION();
-        ASSERT(size + (align - 1) <= BlockSize, "Allocation exceeds max block size");
+        ASSERT(align != 0 && (align & (align - 1)) == 0, "Alignment must be a power of two");
+        if (size > BlockSize || BlockSize - size < align - 1) { return alloc_large(size, align); }
 
         if (block_current_) {
             auto        raw_addr{reinterpret_cast<uptr>(block_current_ + 1)};
@@ -199,6 +241,7 @@ class arena {
         block_offset_  = 0;
         block_head_    = nullptr;
         block_current_ = nullptr;
+        large_head_    = nullptr;
         cleanup_head_  = nullptr;
     }
 
@@ -206,7 +249,65 @@ class arena {
     usize         block_offset_{0};
     block*        block_head_{nullptr};
     block*        block_current_{nullptr};
+    block*        large_head_{nullptr};
     cleanup_node* cleanup_head_{nullptr};
+};
+
+// A copyable handle to an arena satisfying the standard Allocator requirements.
+// Memory is reclaimed only by the arena's reset/clear, so the arena must outlive any container
+// using this allocator.
+template <typename T, usize BlockSize = DEFAULT_ARENA_BLOCK_SIZE>
+    requires(BlockSize > 0)
+class arena_allocator {
+  private:
+    template <typename U, usize B>
+        requires(B > 0)
+    friend class arena_allocator;
+
+  public:
+    using value_type                             = T;
+    using size_type                              = usize;
+    using difference_type                        = std::ptrdiff_t;
+    using propagate_on_container_copy_assignment = std::true_type;
+    using propagate_on_container_move_assignment = std::true_type;
+    using propagate_on_container_swap            = std::true_type;
+    using is_always_equal                        = std::false_type;
+
+    // Required since allocator_traits cannot rebind through the non-type parameter
+    template <typename U> struct rebind {
+        using other = arena_allocator<U, BlockSize>;
+    };
+
+  public:
+    // Implicit so containers can be constructed directly from an arena
+    arena_allocator(arena<BlockSize>& a) noexcept : arena_{&a} {} // NOLINT
+
+    template <typename U>
+    arena_allocator(const arena_allocator<U, BlockSize>& other) noexcept // NOLINT
+        : arena_{other.arena_} {}
+
+    [[nodiscard]] auto allocate(usize n) -> T* {
+        if (n > max_size()) { throw std::bad_array_new_length{}; }
+        return static_cast<T*>(arena_->alloc(n * sizeof(T), alignof(T)));
+    }
+
+    auto deallocate(T* ptr, usize n) noexcept -> void { arena_->free_last(ptr, n * sizeof(T)); }
+
+    [[nodiscard]] static constexpr auto max_size() noexcept -> usize {
+        return std::numeric_limits<usize>::max() / sizeof(T);
+    }
+
+    [[nodiscard]] auto resource() const noexcept -> arena<BlockSize>* { return arena_; }
+
+    template <typename U>
+    [[nodiscard]] friend auto operator==(const arena_allocator&               lhs,
+                                         const arena_allocator<U, BlockSize>& rhs) noexcept
+        -> bool {
+        return lhs.arena_ == rhs.resource();
+    }
+
+  private:
+    arena<BlockSize>* arena_;
 };
 
 } // namespace stdx

@@ -1,5 +1,10 @@
 #include <algorithm>
 #include <array>
+#include <concepts>
+#include <functional>
+#include <list>
+#include <map>
+#include <memory>
 #include <string>
 #include <utility>
 #include <vector>
@@ -149,6 +154,63 @@ TEST_CASE("Arena move assignment into non-empty arena") {
 
     dst.clear();
     CHECK(tracker::live_count == 0);
+}
+
+TEST_CASE("Arena allocator satisfies allocator traits") {
+    using alloc  = arena_allocator<i32>;
+    using traits = std::allocator_traits<alloc>;
+    STATIC_CHECK(std::same_as<traits::value_type, i32>);
+    STATIC_CHECK(std::same_as<traits::rebind_alloc<f64>, arena_allocator<f64>>);
+    STATIC_CHECK(traits::propagate_on_container_move_assignment::value);
+    STATIC_CHECK_FALSE(traits::is_always_equal::value);
+
+    arena a;
+    arena b;
+    alloc x{a};
+    CHECK(x == arena_allocator<f64>{x});
+    CHECK(x != alloc{b});
+}
+
+TEST_CASE("Arena allocator backs standard containers") {
+    arena a;
+
+    std::vector<i32, arena_allocator<i32>> vec{a};
+    for (i32 i{0}; i < 1'000; ++i) { vec.push_back(i); }
+    for (i32 i{0}; i < 1'000; ++i) { CHECK(vec[static_cast<usize>(i)] == i); }
+
+    using str = std::basic_string<char, std::char_traits<char>, arena_allocator<char>>;
+    std::map<i32, str, std::less<>, arena_allocator<std::pair<const i32, str>>> map{a};
+    map.emplace(1, str{"a fairly long string that will not fit in the SSO buffer", a});
+    CHECK(map.at(1).size() > 32);
+
+    std::list<beefy, arena_allocator<beefy>> list{a};
+    list.emplace_back();
+    CHECK(list.front().nums.size() == 9);
+}
+
+TEST_CASE("Arena allocator handles allocations larger than a block") {
+    arena<64> a;
+
+    using vec = std::vector<i32, arena_allocator<i32, 64>>;
+    {
+        vec v{a};
+        v.resize(10'000, 7);
+        CHECK(std::ranges::all_of(v, [](i32 i) -> i32 { return i == 7; }));
+    }
+
+    a.reset();
+    vec v{a};
+    v.resize(100, 3);
+    CHECK(v.back() == 3);
+}
+
+TEST_CASE("Arena allocator rolls back the latest allocation") {
+    arena               a;
+    arena_allocator<u8> alloc{a};
+
+    auto* first{alloc.allocate(16)};
+    alloc.deallocate(first, 16);
+    CHECK(alloc.allocate(16) == first);
 }
 
 } // namespace stdx::tests

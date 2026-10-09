@@ -207,3 +207,8 @@
 # v3.0.2
 
 - Fix the test harness slowing to a crawl under heavy allocation churn by periodically rehashing tombstones out of its live allocation table
+
+# v3.1.0
+
+- Add `arena_allocator`, a copyable handle that lets `arena` back standard containers via the Allocator requirements
+- Allow arena allocations larger than the block size by giving them a dedicated region released on `reset`/`clear`
