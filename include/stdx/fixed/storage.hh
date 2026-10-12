@@ -8,7 +8,8 @@
 
 namespace stdx::fixed::detail {
 
-// Non-default constructible object use a raw byte array initialized on the fly
+// Non-default constructible or non-trivially destructible objects use a raw byte array initialized
+// on the fly
 template <typename Data, usize Capacity> struct storage {
     // Operations on this byte array are generally non constexpr-capable
     alignas(Data) std::byte items[Capacity * sizeof(Data)];
@@ -18,8 +19,10 @@ template <typename Data, usize Capacity> struct storage {
     }
 };
 
-// Default constructible objects can be freely constructed all at once
-template <DefaultConstructible Data, usize Capacity> struct storage<Data, Capacity> {
+// Default constructible and trivially destructible objects can be freely constructed all at once
+template <typename Data, usize Capacity>
+    requires(DefaultConstructible<Data> && TriviallyDestructible<Data>)
+struct storage<Data, Capacity> {
     std::array<Data, Capacity> items{};
 
     [[nodiscard]] constexpr auto data(this auto&& self) noexcept -> auto* {

@@ -42,4 +42,24 @@ struct raii_tracker {
     }
 };
 
+// Default constructible tracker counting constructions and destructions
+struct default_raii_tracker {
+    static inline i32 live_count{0};
+    static inline i32 destruct_count{0};
+
+    static auto reset() -> void { live_count = destruct_count = 0; }
+
+    default_raii_tracker() { live_count++; }
+    default_raii_tracker(i32) { live_count++; }
+    ~default_raii_tracker() {
+        live_count--;
+        destruct_count++;
+    }
+
+    default_raii_tracker(const default_raii_tracker&) { live_count++; }
+    default_raii_tracker(default_raii_tracker&&) noexcept { live_count++; }
+    auto operator=(const default_raii_tracker&) -> default_raii_tracker&     = default;
+    auto operator=(default_raii_tracker&&) noexcept -> default_raii_tracker& = default;
+};
+
 } // namespace stdx::tests::helpers

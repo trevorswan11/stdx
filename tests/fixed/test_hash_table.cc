@@ -200,6 +200,21 @@ TEST_CASE("hash_table destructor correctness") {
     CHECK(tracker::destruct_count == 2);
 }
 
+TEST_CASE("hash_table default constructible destructor correctness") {
+    using default_tracker = helpers::default_raii_tracker;
+    default_tracker::reset();
+    {
+        fixed::hash_map<i32, default_tracker, 8> hm;
+        CHECK(default_tracker::live_count == 0);
+        hm.emplace(0, 0);
+        hm.emplace(1, 0);
+        hm.emplace(2, 0);
+        hm.remove(2);
+    }
+    CHECK(default_tracker::destruct_count == 3);
+    CHECK(default_tracker::live_count == 0);
+}
+
 TEST_CASE("hash_table copy correctness") {
     using hash_map = fixed::hash_map<i32, tracker, 3>;
     tracker::reset();

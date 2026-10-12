@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iterator>
+#include <string>
 #include <utility>
 
 #include <catch2/catch_test_macros.hpp>
@@ -97,6 +98,29 @@ TEST_CASE("fixed::vector destructor correctness") {
         vec.emplace_back(0);
     }
     CHECK(tracker::destruct_count == 2);
+}
+
+TEST_CASE("fixed::vector default constructible destructor correctness") {
+    using default_tracker = helpers::default_raii_tracker;
+    default_tracker::reset();
+    {
+        fixed::vector<default_tracker, 5> vec;
+        CHECK(default_tracker::live_count == 0);
+        vec.emplace_back();
+        vec.emplace_back();
+        vec.emplace_back();
+        vec.pop_back();
+    }
+    CHECK(default_tracker::destruct_count == 3);
+    CHECK(default_tracker::live_count == 0);
+}
+
+TEST_CASE("fixed::vector of strings") {
+    fixed::vector<std::string, 4> vec;
+    vec.emplace_back("a string long enough to avoid the small string optimization");
+    vec.emplace_back("another string long enough to avoid the small string optimization");
+    vec.pop_back();
+    CHECK(vec.size() == 1);
 }
 
 TEST_CASE("fixed::vector copy correctness") {

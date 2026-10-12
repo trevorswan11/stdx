@@ -218,3 +218,8 @@
 - Upgrade Catch2 to v3.16.1
 - Update formatter requirements to LLVM v23.1.3
 - Address static analysis qualms found by clangd LLVM23
+
+# v3.1.2
+
+- Fixed data structures now work properly with non-trivially-destructible types
+    - Used to cause double free heap corruption
