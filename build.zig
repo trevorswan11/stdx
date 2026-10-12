@@ -568,7 +568,7 @@ fn addTooling(b: *std.Build, config: struct {
     const paths = try ProjectPaths.collectToolingPaths(b);
     _ = steps.addFmt(b, .{
         .paths = paths,
-        .formatter = .{ .version = "21.1.8" },
+        .formatter = .{ .version = "23.1.3" },
     }) catch {};
 
     if (config.cdb_gen) |cdb_gen| {

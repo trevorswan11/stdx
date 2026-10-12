@@ -41,7 +41,7 @@
             cmake
             ninja
           ]
-          ++ (with llvmPackages_21; [
+          ++ (with llvmPackages_23; [
             clang-tools
             lldb
           ]);

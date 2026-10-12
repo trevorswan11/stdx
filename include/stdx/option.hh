@@ -217,7 +217,7 @@ template <Compactable T> struct option_impl<T> {
 } // namespace detail
 
 // A safe, reference-allowable optional type dispatcher
-template <typename T> using option = typename detail::option_impl<T>::type;
+template <typename T> using option = detail::option_impl<T>::type;
 
 // Compares two values, forwarding safety concerns to the comparator.
 template <typename T, typename Comparator>

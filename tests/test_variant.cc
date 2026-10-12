@@ -11,9 +11,9 @@
 
 namespace stdx::tests {
 
-using foo     = helpers::foo;
-using bar     = helpers::bar;
-using baz     = helpers::baz;
+using helpers::bar;
+using helpers::baz;
+using helpers::foo;
 using fbb     = variant<foo, bar, baz>;
 using tracker = helpers::raii_tracker;
 
@@ -129,8 +129,8 @@ TEST_CASE("Variant::visit variadic lambda form with void return") {
 TEST_CASE("Variant::visit on const Variant") {
     const fbb v{bar{"const visit"}};
     auto      len{v.visit([](const foo&) -> usize { return 0UZ; },
-                     [](const bar& b) -> usize { return b.value.size(); },
-                     [](const baz&) -> usize { return 0UZ; })};
+                          [](const bar& b) -> usize { return b.value.size(); },
+                          [](const baz&) -> usize { return 0UZ; })};
     CHECK(len == 11UZ);
 }
 

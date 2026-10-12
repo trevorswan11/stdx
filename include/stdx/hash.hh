@@ -19,7 +19,7 @@ namespace wyhash {
 
 // Constexpr-capable multiply function for MUM
 constexpr auto mum(u64* a, u64* b) noexcept -> void {
-#if defined(__SIZEOF_INT128__)
+#ifdef __SIZEOF_INT128__
     __uint128_t r{*a};
     r *= *b;
     *a = static_cast<u64>(r);

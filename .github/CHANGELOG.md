@@ -212,3 +212,9 @@
 
 - Add `arena_allocator`, a copyable handle that lets `arena` back standard containers via the Allocator requirements
 - Allow arena allocations larger than the block size by giving them a dedicated region released on `reset`/`clear`
+
+# v3.1.1
+
+- Upgrade Catch2 to v3.16.1
+- Update formatter requirements to LLVM v23.1.3
+- Address static analysis qualms found by clangd LLVM23

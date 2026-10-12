@@ -54,7 +54,7 @@ class variant {
     template <usize I, typename... Types> struct nth_type {
         using type = __type_pack_element<I, Types...>;
     };
-    template <usize I> using nth = typename nth_type<I, Ts...>::type;
+    template <usize I> using nth = nth_type<I, Ts...>::type;
     template <typename T>
     static constexpr usize index_of = [] -> usize {
         usize i{0};
@@ -89,7 +89,7 @@ class variant {
 
     // In-place construction
     template <typename T, typename... Args>
-        requires(index_of<T> < N && Constructible<T, Args && ...>)
+        requires(index_of<T> < N && Constructible<T, Args&&...>)
     explicit variant(std::in_place_type_t<T>,
                      Args&&... args) noexcept(nothrow_constructable<T, Args&&...>) {
         ::new (storage_) T{std::forward<Args>(args)...};
@@ -139,7 +139,7 @@ class variant {
 
     // Safely cleans up the active type before constructing a new type in place
     template <typename T, typename... Args>
-        requires(index_of<T> < N && Constructible<T, Args && ...>)
+        requires(index_of<T> < N && Constructible<T, Args&&...>)
     auto emplace(Args&&... args) noexcept(nothrow_constructable<T, Args&&...>) -> T& {
         destroy_active();
         T* p   = ::new (storage_) T{std::forward<Args>(args)...};

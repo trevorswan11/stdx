@@ -19,6 +19,7 @@ pub fn configHeader(
 }
 
 pub const sources = .{
+    "benchmark/catch_benchmark.cpp",
     "benchmark/catch_chronometer.cpp",
     "benchmark/detail/catch_analyse.cpp",
     "benchmark/detail/catch_benchmark_function.cpp",
@@ -50,7 +51,7 @@ pub const sources = .{
     "internal/catch_debugger.cpp",
     "internal/catch_decomposer.cpp",
     "internal/catch_enforce.cpp",
-    "internal/catch_enum_values_registry.cpp",
+    "internal/catch_enum_info.cpp",
     "internal/catch_errno_guard.cpp",
     "internal/catch_exception_translator_registry.cpp",
     "internal/catch_fatal_condition_handler.cpp",
@@ -102,6 +103,7 @@ pub const sources = .{
     "generators/catch_generator_exception.cpp",
     "generators/catch_generators.cpp",
     "generators/catch_generators_random.cpp",
+    "generators/catch_generators_throw.cpp",
 
     "matchers/catch_matchers.cpp",
     "matchers/catch_matchers_container_properties.cpp",

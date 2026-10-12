@@ -5,8 +5,8 @@
     .fingerprint = 0x5479474f83add874,
     .dependencies = .{
         .catch2 = .{
-            .url = "https://github.com/catchorg/Catch2/archive/refs/tags/v3.12.0.tar.gz",
-            .hash = "N-V-__8AAA1iiAB-7p1uHA2cu3mmSN2ncyyURBkin7xOz0-V",
+            .url = "https://github.com/catchorg/Catch2/archive/refs/tags/v3.16.1.tar.gz",
+            .hash = "N-V-__8AAKs_iwBkTijH9zPts9R967TbPFcdMbDRBylms3_R",
         },
         .cppcheck = .{
             .url = "https://github.com/danmar/cppcheck/archive/refs/tags/2.19.0.tar.gz",
