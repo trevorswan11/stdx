@@ -69,6 +69,7 @@ template <typename T> class ref {
         return ptr;
     }
 
+    [[nodiscard]] constexpr auto raw(this auto&& self) noexcept -> auto* { return self.ptr_; }
     [[nodiscard]] constexpr auto value() const noexcept -> T& { return *get(); }
     [[nodiscard]] constexpr auto get() const noexcept -> T* {
         ASSERT(has_value(), "Attempt to access empty optional reference");

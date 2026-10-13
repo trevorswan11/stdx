@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 project(stdx
-    VERSION 3.1.2
+    VERSION 3.2.0
     LANGUAGES CXX
 )
 
@@ -191,7 +191,7 @@ if(STDX_BUILD_TESTS)
         set(CATCH_INSTALL_HELPERS OFF CACHE INTERNAL "")
         FetchContent_Declare(
             catch2
-            URL https://github.com/catchorg/Catch2/archive/refs/tags/v3.12.0.tar.gz
+            URL https://github.com/catchorg/Catch2/archive/refs/tags/v3.16.1.tar.gz
         )
         FetchContent_MakeAvailable(catch2)
     else()

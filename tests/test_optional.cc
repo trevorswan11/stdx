@@ -41,7 +41,8 @@ TEST_CASE("Ref basic construction") {
     CHECK(opt);
     CHECK(opt.value() == val);
     CHECK(*opt == 42);
-    CHECK(&*opt == &val);
+    CHECK(opt.get() == &val);
+    CHECK(opt.raw() == &val);
 }
 
 TEST_CASE("Ref null use & access") {
@@ -49,6 +50,7 @@ TEST_CASE("Ref null use & access") {
     CHECK_FALSE(opt1.has_value());
     const detail::ref<i32> opt2{none};
     CHECK_FALSE(opt2.has_value());
+    CHECK(!opt2.raw());
 }
 
 TEST_CASE("Ref conversions") {

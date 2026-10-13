@@ -223,3 +223,8 @@
 
 - Fixed data structures now work properly with non-trivially-destructible types
     - Used to cause double free heap corruption
+
+# v3.2.0
+
+- Add `raw` to `stdx::detail::ref` to get the underlying pointer value
+- Pin updated Catch2 hash in CMakeLists
