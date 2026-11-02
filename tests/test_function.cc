@@ -129,4 +129,10 @@ TEST_CASE("Function reset and destructor execution") {
     }
 }
 
+TEST_CASE("Function returning reference works") {
+    i32              i{42};
+    function<i32&()> f{[&i] -> i32& { return i; }};
+    CHECK(f() == 42);
+}
+
 } // namespace stdx::tests

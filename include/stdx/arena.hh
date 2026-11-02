@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstddef>
 #include <limits>
 #include <new>
 #include <type_traits>
@@ -267,7 +266,7 @@ class arena_allocator {
   public:
     using value_type                             = T;
     using size_type                              = usize;
-    using difference_type                        = std::ptrdiff_t;
+    using difference_type                        = idiff;
     using propagate_on_container_copy_assignment = std::true_type;
     using propagate_on_container_move_assignment = std::true_type;
     using propagate_on_container_swap            = std::true_type;

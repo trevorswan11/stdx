@@ -5,7 +5,9 @@
 #include <type_traits>
 #include <utility>
 
+#include "stdx/assert.hh"
 #include "stdx/option.hh"
+#include "stdx/type_traits.hh"
 #include "stdx/types.hh"
 
 namespace stdx {
@@ -135,12 +137,20 @@ class function<Ret(Args...), StorageSize> {
         return *this;
     }
 
+    // Behavior is somewhat well-defined without a vtable
+    // - Default constructs if possible
+    // - Returns void for `Ret == void`
+    // - UB if not default constructible
+    //
+    // It is wise to call this a function object iff you have verified it exists
     auto operator()(Args... args) const -> Ret {
         if (!vtable_) {
             if constexpr (std::is_void_v<Ret>) {
                 return;
-            } else {
+            } else if constexpr (DefaultConstructible<Ret>) {
                 return Ret{};
+            } else {
+                UNREACHABLE("Function cannot safely be called without its vtable");
             }
         }
         return vtable_->invoke(static_cast<const void*>(storage_), std::forward<Args>(args)...);
