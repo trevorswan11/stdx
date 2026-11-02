@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 project(stdx
-    VERSION 3.2.0
+    VERSION 3.2.1
     LANGUAGES CXX
 )
 
