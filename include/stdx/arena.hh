@@ -278,6 +278,8 @@ class arena_allocator {
     };
 
   public:
+    constexpr arena_allocator() noexcept = default;
+
     // Implicit so containers can be constructed directly from an arena
     arena_allocator(arena<BlockSize>& a) noexcept : arena_{&a} {} // NOLINT
 
@@ -286,11 +288,15 @@ class arena_allocator {
         : arena_{other.arena_} {}
 
     [[nodiscard]] auto allocate(usize n) -> T* {
+        ASSERT(arena_, "Attempt to allocate with a detached arena allocator");
         if (n > max_size()) { throw std::bad_array_new_length{}; }
         return static_cast<T*>(arena_->alloc(n * sizeof(T), alignof(T)));
     }
 
-    auto deallocate(T* ptr, usize n) noexcept -> void { arena_->free_last(ptr, n * sizeof(T)); }
+    auto deallocate(T* ptr, usize n) noexcept -> void {
+        ASSERT(arena_, "Attempt to deallocate with a detached arena allocator");
+        arena_->free_last(ptr, n * sizeof(T));
+    }
 
     [[nodiscard]] static constexpr auto max_size() noexcept -> usize {
         return std::numeric_limits<usize>::max() / sizeof(T);
@@ -306,7 +312,7 @@ class arena_allocator {
     }
 
   private:
-    arena<BlockSize>* arena_;
+    arena<BlockSize>* arena_{nullptr};
 };
 
 } // namespace stdx

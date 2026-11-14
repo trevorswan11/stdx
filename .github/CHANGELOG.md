@@ -237,3 +237,7 @@
 
 - Add monadic member functions to `stdx::option`'s dispatched types
 - Prevent `stdx::variant`'s helpers from silently accepting types not in the variants type set
+
+# v3.3.1
+
+- Make allocator default constructible for newer libstdc++ versions

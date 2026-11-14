@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -169,6 +170,18 @@ TEST_CASE("Arena allocator satisfies allocator traits") {
     alloc x{a};
     CHECK(x == arena_allocator<f64>{x});
     CHECK(x != alloc{b});
+}
+
+TEST_CASE("Arena allocator default construction is detached") {
+    STATIC_CHECK(std::is_nothrow_default_constructible_v<arena_allocator<i32>>);
+
+    const arena_allocator<i32> detached;
+    CHECK(detached.resource() == nullptr);
+    CHECK(detached == arena_allocator<f64>{});
+
+    arena                      a;
+    const arena_allocator<i32> attached{a};
+    CHECK(detached != attached);
 }
 
 TEST_CASE("Arena allocator backs standard containers") {
