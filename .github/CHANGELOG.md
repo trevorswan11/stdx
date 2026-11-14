@@ -232,3 +232,8 @@
 # v3.2.1
 
 - `stdx::function` works with non default constructible return types
+
+# v3.3.0
+
+- Add monadic member functions to `stdx::option`'s dispatched types
+- Prevent `stdx::variant`'s helpers from silently accepting types not in the variants type set

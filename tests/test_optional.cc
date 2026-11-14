@@ -6,12 +6,16 @@
 
 #include <catch2/catch_test_macros.hpp>
 
+#include "helpers/enum.hh"
 #include "helpers/inheritance.hh"
 #include "stdx/option.hh"
 #include "stdx/type_traits.hh"
 #include "stdx/types.hh"
 
 namespace stdx::tests {
+
+using helpers::non_optionable_enum;
+using helpers::optionable_enum;
 
 TEST_CASE("Ref construction checks") {
     STATIC_CHECK_FALSE(Constructible<detail::ref<i32>, i32&&>);
@@ -191,14 +195,6 @@ TEST_CASE("Index-std optional conversion") {
     CHECK_FALSE(my_i.has_value());
 }
 
-enum non_optionable_enum : u8 {};
-
-enum class optionable_enum : u8 {
-    A,
-    B,
-    C,
-};
-
 TEST_CASE("CompactOpt with enum") {
     STATIC_REQUIRE_FALSE(Compactable<i32>);
     STATIC_REQUIRE_FALSE(Compactable<non_optionable_enum>);
@@ -241,6 +237,199 @@ TEST_CASE("Enum-std optional conversion") {
     std::optional<optionable_enum> empty_std;
     my_i = empty_std;
     CHECK_FALSE(my_i.has_value());
+}
+
+TEST_CASE("Ref transform yielding a reference") {
+    helpers::derived          d;
+    option<helpers::derived&> opt{d};
+
+    auto res{opt.transform([](helpers::derived& inner) -> i32& { return inner.x; })};
+    STATIC_CHECK(std::is_same_v<decltype(res), option<i32&>>);
+    REQUIRE(res);
+    CHECK(res.get() == &d.x);
+}
+
+TEST_CASE("Ref and_then") {
+    i32          i{4};
+    option<i32&> opt{i};
+    option<i32&> empty;
+
+    const auto half = [](i32& v) -> std::optional<i32> {
+        if (v % 2 != 0) { return none; }
+        return v / 2;
+    };
+
+    CHECK(opt.and_then(half) == 2);
+    CHECK_FALSE(empty.and_then(half));
+
+    i = 3;
+    CHECK_FALSE(opt.and_then(half));
+}
+
+TEST_CASE("Ref or_else") {
+    i32          a{1}, b{2};
+    option<i32&> opt{a};
+    option<i32&> empty;
+
+    const auto fallback = [&b] -> option<i32&> { return b; };
+    CHECK(opt.or_else(fallback).get() == &a);
+    CHECK(empty.or_else(fallback).get() == &b);
+}
+
+TEST_CASE("Ref value_or") {
+    i32          a{1}, b{2};
+    option<i32&> opt{a};
+    option<i32&> empty;
+
+    CHECK(&opt.value_or(b) == &a);
+    CHECK(&empty.value_or(b) == &b);
+
+    helpers::derived             d;
+    const option<helpers::base&> base_opt;
+    CHECK(&base_opt.value_or(d) == static_cast<helpers::base*>(&d));
+}
+
+TEST_CASE("Ref has_value_and") {
+    i32          i{5};
+    option<i32&> opt{i};
+    option<i32&> empty;
+
+    CHECK(opt.has_value_and([](i32 v) -> bool { return v > 3; }));
+    CHECK_FALSE(opt.has_value_and([](i32 v) -> bool { return v > 10; }));
+    CHECK_FALSE(empty.has_value_and([](i32) -> bool { return true; }));
+}
+
+TEST_CASE("Compact option monadics") {
+    STATIC_CHECK(sizeof(option<optionable_enum>) == sizeof(optionable_enum));
+
+    option<optionable_enum> e{optionable_enum::A};
+    option<optionable_enum> empty;
+
+    SECTION("transform stays compact for compactable results") {
+        auto res{
+            e.transform([](optionable_enum) -> optionable_enum { return optionable_enum::C; })};
+        STATIC_CHECK(std::is_same_v<decltype(res), option<optionable_enum>>);
+        CHECK(res == optionable_enum::C);
+    }
+
+    SECTION("transform accepts lvalue reference parameters") {
+        auto res{e.transform([](optionable_enum& inner) -> optionable_enum& { return inner; })};
+        STATIC_CHECK(std::is_same_v<decltype(res), option<optionable_enum&>>);
+        REQUIRE(res);
+        CHECK(res.get() == e.get());
+    }
+
+    SECTION("and_then") {
+        const auto next = [](optionable_enum v) -> option<optionable_enum> {
+            if (v == optionable_enum::C) { return none; }
+            return static_cast<optionable_enum>(static_cast<u8>(v) + 1);
+        };
+        CHECK(e.and_then(next).and_then(next) == optionable_enum::C);
+        CHECK_FALSE(e.and_then(next).and_then(next).and_then(next));
+        CHECK_FALSE(empty.and_then(next));
+    }
+
+    SECTION("or_else") {
+        const auto fallback = [] -> option<optionable_enum> { return optionable_enum::B; };
+        CHECK(e.or_else(fallback) == optionable_enum::A);
+        CHECK(empty.or_else(fallback) == optionable_enum::B);
+    }
+
+    SECTION("value_or accepts lvalues and rvalues") {
+        const auto fallback{optionable_enum::C};
+        CHECK(empty.value_or(fallback) == optionable_enum::C);
+        CHECK(empty.value_or(optionable_enum::B) == optionable_enum::B);
+        CHECK(e.value_or(fallback) == optionable_enum::A);
+    }
+}
+
+TEST_CASE("Index wrapper monadics") {
+    STATIC_CHECK(sizeof(opt_size) == sizeof(usize));
+
+    const opt_size i{3UZ};
+    const opt_size empty;
+
+    SECTION("value_or") {
+        CHECK(i.value_or(7) == 3);
+        CHECK(empty.value_or(7) == 7);
+    }
+
+    SECTION("transform") {
+        const auto res{i.transform([](usize v) -> usize { return v * 2; })};
+        REQUIRE(res);
+        CHECK(*res == 6);
+        CHECK_FALSE(empty.transform([](usize v) -> usize { return v * 2; }));
+    }
+
+    SECTION("and_then") {
+        const auto prev = [](usize v) -> opt_size {
+            if (v == 0) { return none; }
+            return v - 1;
+        };
+        const auto res{i.and_then(prev)};
+        STATIC_CHECK(std::is_same_v<decltype(res), const opt_size>);
+        CHECK(res == opt_size{2UZ});
+        CHECK_FALSE(opt_size{0UZ}.and_then(prev));
+        CHECK_FALSE(empty.and_then(prev));
+    }
+
+    SECTION("or_else") {
+        const auto fallback = [] -> opt_size { return 0UZ; };
+        CHECK(i.or_else(fallback) == opt_size{3UZ});
+        CHECK(empty.or_else(fallback) == opt_size{0UZ});
+    }
+
+    SECTION("has_value_and") {
+        CHECK(i.has_value_and([](usize v) -> bool { return v == 3; }));
+        CHECK_FALSE(empty.has_value_and([](usize) -> bool { return true; }));
+    }
+}
+
+TEST_CASE("Boolean wrapper monadics") {
+    STATIC_CHECK(sizeof(tribool) == sizeof(u8));
+
+    const tribool t{true};
+    const tribool f{false};
+    const tribool empty;
+
+    SECTION("value_or on const") { CHECK(empty.value_or(true)); }
+
+    SECTION("equality") {
+        CHECK(t == tribool{true});
+        CHECK(t != f);
+        CHECK(empty == tribool{none});
+        CHECK(f != empty);
+    }
+
+    SECTION("transform") {
+        const auto res{t.transform([](bool b) -> i32 { return b ? 1 : 0; })};
+        STATIC_CHECK(std::is_same_v<decltype(res), const option<i32>>);
+        CHECK(res == 1);
+        CHECK(f.transform([](bool b) -> i32 { return b ? 1 : 0; }) == 0);
+        CHECK_FALSE(empty.transform([](bool) -> i32 { return 1; }));
+    }
+
+    SECTION("and_then") {
+        const auto negate = [](bool b) -> tribool { return !b; };
+        CHECK(t.and_then(negate) == f);
+        CHECK(f.and_then(negate) == t);
+        CHECK_FALSE(empty.and_then(negate));
+        const auto only_true = [](bool b) -> tribool { return b ? tribool{true} : none; };
+        CHECK_FALSE(f.and_then(only_true));
+    }
+
+    SECTION("or_else") {
+        const auto fallback = [] -> tribool { return false; };
+        CHECK(t.or_else(fallback) == t);
+        CHECK(empty.or_else(fallback) == f);
+    }
+
+    SECTION("has_value_and") {
+        const auto is_true = [](bool b) -> bool { return b; };
+        CHECK(t.has_value_and(is_true));
+        CHECK_FALSE(f.has_value_and(is_true));
+        CHECK_FALSE(empty.has_value_and(is_true));
+    }
 }
 
 } // namespace stdx::tests

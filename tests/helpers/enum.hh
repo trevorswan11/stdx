@@ -32,4 +32,12 @@ enum class non_monotonic_enum : u8 {
     D = 23,
 };
 
+enum non_optionable_enum : u8 {};
+
+enum class optionable_enum : u8 {
+    A,
+    B,
+    C,
+};
+
 } // namespace stdx::tests::helpers

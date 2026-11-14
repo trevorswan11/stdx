@@ -1,5 +1,5 @@
 {
-  description = "stdxtdx development.";
+  description = "stdx development.";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";

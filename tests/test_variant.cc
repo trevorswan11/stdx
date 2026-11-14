@@ -59,6 +59,30 @@ TEST_CASE("Variant::is<T>") {
     CHECK_FALSE(v.is<baz>());
 }
 
+namespace {
+
+template <typename V, typename T>
+concept CanQueryIs = requires(const V& v) { v.template is<T>(); };
+template <typename V, typename T>
+concept CanQueryAs = requires(V& v) { v.template as<T>(); };
+template <typename V, typename T>
+concept CanQueryAsOpt = requires(V& v) { v.template as_opt<T>(); };
+
+} // namespace
+
+TEST_CASE("Variant accessors reject non-alternative types") {
+    STATIC_CHECK(CanQueryIs<fbb, foo>);
+    STATIC_CHECK(CanQueryIs<fbb, const bar&>);
+    STATIC_CHECK_FALSE(CanQueryIs<fbb, i32>);
+    STATIC_CHECK_FALSE(CanQueryIs<fbb, std::string>);
+
+    STATIC_CHECK(CanQueryAs<fbb, baz>);
+    STATIC_CHECK_FALSE(CanQueryAs<fbb, i32>);
+
+    STATIC_CHECK(CanQueryAsOpt<fbb, bar>);
+    STATIC_CHECK_FALSE(CanQueryAsOpt<fbb, i32>);
+}
+
 TEST_CASE("Variant::index") {
     CHECK(fbb{foo{}}.index() == 0UZ);
     CHECK(fbb{bar{}}.index() == 1UZ);

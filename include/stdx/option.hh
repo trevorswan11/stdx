@@ -37,9 +37,78 @@ template <ScopedEnum E> struct nullable<E> {
 using none_t = std::nullopt_t;
 constexpr none_t none{std::nullopt};
 
+template <typename O>
+concept OptionLike = DefaultConstructible<O> && requires(const O& o) {
+    { o.has_value() } -> std::same_as<bool>;
+};
+
 namespace detail {
 
-template <typename T> class ref {
+template <typename T> struct option_impl;
+
+// Shared monadic interface for the custom optional types, mirroring C++23's `std::optional`
+struct monadic {
+    // Returns an option holding f(value()) if a value is present, otherwise an empty option
+    template <typename Self, typename F>
+    [[nodiscard]] constexpr auto transform(this Self&& self, F&& f) {
+        using val    = decltype(std::forward<Self>(self).value());
+        using res_cv = std::invoke_result_t<F, val>;
+        using res    = std::remove_cv_t<res_cv>;
+
+        // This is straight from clang's stdc++ C++23 optional implementation
+        static_assert(!std::is_void_v<res>, "Result of f(value()) should not be void");
+        static_assert(!std::is_array_v<res>, "Result of f(value()) should not be an Array");
+        static_assert(!std::is_same_v<std::remove_cvref_t<res>, std::in_place_t>,
+                      "Result of f(value()) should not be std::in_place_t");
+        static_assert(!std::is_same_v<std::remove_cvref_t<res>, std::nullopt_t>,
+                      "Result of f(value()) should not be stdx::none");
+        static_assert(!std::is_rvalue_reference_v<res_cv>,
+                      "Result of f(value()) should not be an rvalue reference");
+
+        // Generalized to support reference transform chains
+        using ret = option_impl<res>::type;
+        if (self.has_value()) {
+            return ret{std::invoke(std::forward<F>(f), std::forward<Self>(self).value())};
+        }
+        return ret{};
+    }
+
+    // Returns f(value()) if a value is present, otherwise an empty instance of f's return type
+    template <typename Self, typename F>
+    [[nodiscard]] constexpr auto and_then(this Self&& self, F&& f) {
+        using val = decltype(std::forward<Self>(self).value());
+        using ret = std::remove_cvref_t<std::invoke_result_t<F, val>>;
+        static_assert(OptionLike<ret>, "Result of f(value()) should be an optional type");
+
+        if (self.has_value()) {
+            return ret{std::invoke(std::forward<F>(f), std::forward<Self>(self).value())};
+        }
+        return ret{};
+    }
+
+    // Returns a copy of this if a value is present, otherwise the result of f()
+    template <typename Self, typename F>
+    [[nodiscard]] constexpr auto or_else(this Self&& self, F&& f) -> std::remove_cvref_t<Self> {
+        using ret = std::remove_cvref_t<Self>;
+        static_assert(std::convertible_to<std::invoke_result_t<F>, ret>,
+                      "Result of f() should be convertible to the optional type");
+
+        if (self.has_value()) { return std::forward<Self>(self); }
+        return std::invoke(std::forward<F>(f));
+    }
+
+    // Returns true if a value is present and satisfies the predicate
+    template <typename Self, typename Pred>
+    [[nodiscard]] constexpr auto has_value_and(this Self&& self, Pred&& pred) -> bool {
+        return self.has_value() && static_cast<bool>(std::invoke(std::forward<Pred>(pred),
+                                                                 std::forward<Self>(self).value()));
+    }
+
+    // Required for derived types that default their equality operators
+    [[nodiscard]] constexpr auto operator==(const monadic&) const noexcept -> bool = default;
+};
+
+template <typename T> class ref : public monadic {
   public:
     // cppcheck-suppress-begin noExplicitConstructor
     constexpr ref() noexcept : ptr_{nullptr} {}
@@ -79,30 +148,13 @@ template <typename T> class ref {
     [[nodiscard]] constexpr auto operator->() const noexcept -> T* { return get(); }
     [[nodiscard]] constexpr auto operator*() const noexcept -> T& { return *get(); }
 
-    // Applies F to to underlying reference if present
-    template <typename F> [[nodiscard]] constexpr auto transform(this auto&& self, F&& f) {
-        using res_cv = std::invoke_result_t<F, T&>;
-        using res    = std::remove_cv_t<res_cv>;
-
-        // This is straight from clang's stdc++ C++23 optional implementation
-        static_assert(!std::is_array_v<res>, "Result of f(value()) should not be an Array");
-        static_assert(!std::is_same_v<res, std::in_place_t>,
-                      "Result of f(value()) should not be std::in_place_t");
-        static_assert(!std::is_same_v<res, none_t>,
-                      "Result of f(value()) should not be stdx::none");
-
-        // Also from clang, but generalized to support reference transform chains
-        using ret = std::conditional_t<std::is_reference_v<res_cv>,
-                                       ref<std::remove_reference_t<res_cv>>,
-                                       std::optional<res_cv>>;
-        if (self.has_value()) { return ret{std::forward<F>(f)(self.value())}; }
-        return ret{};
-    }
-
+    // Returns the referenced value, or the fallback.
+    //
+    // The fallback must be an lvalue to avoid dangling, and must be convertible to T.
     template <typename Or>
-        requires requires(T& t) { static_cast<Or&>(t); }
-    [[nodiscard]] constexpr auto value_or(this auto&& self, Or& or_value) -> T& {
-        return self.has_value() ? *self.get() : static_cast<T&>(or_value);
+        requires std::convertible_to<Or*, T*>
+    [[nodiscard]] constexpr auto value_or(Or& or_value) const noexcept -> T& {
+        return has_value() ? *ptr_ : or_value;
     }
 
     // Creates a copy of the underlying data and forwards it to the standard optional
@@ -119,13 +171,8 @@ template <typename T> class ref {
     T* ptr_;
 };
 
-// Returns the Ref version of the optional type if required
-template <typename T>
-using dispatch_opt =
-    std::conditional_t<Reference<T>, ref<std::remove_reference_t<T>>, std::optional<T>>;
-
 // An efficient optional enum representation for enums with a sentinel value
-template <Compactable T> class compact_opt {
+template <Compactable T> class compact_opt : public monadic {
   public:
     // cppcheck-suppress-begin noExplicitConstructor
     constexpr compact_opt() noexcept : value_{NO_VALUE} {}
@@ -169,27 +216,9 @@ template <Compactable T> class compact_opt {
     [[nodiscard]] friend auto operator==(const compact_opt& lhs, const compact_opt& rhs) noexcept
         -> bool = default;
 
-    template <typename F>
-    [[nodiscard]] constexpr auto transform(this auto&& self, F&& f) -> decltype(auto) {
-        using res = std::remove_cv_t<std::invoke_result_t<F, T>>;
-
-        // This is straight from clang's stdc++ C++23 optional implementation
-        static_assert(!std::is_array_v<res>, "Result of f(value()) should not be an Array");
-        static_assert(!std::is_same_v<res, std::in_place_t>,
-                      "Result of f(value()) should not be std::in_place_t");
-        static_assert(!std::is_same_v<res, none_t>,
-                      "Result of f(value()) should not be stdx::none");
-        static_assert(std::is_object_v<res>, "Result of f(value()) should be an object type");
-
-        // Also from clang, but generalized to support reference transform chains
-        using ret = dispatch_opt<res>;
-        return self.has_value() ? ret{std::forward<F>(f)(self.value())} : ret{};
-    }
-
-    template <CopyConstructible Or>
-        requires requires(const T& t) { static_cast<Or>(t); }
-    [[nodiscard]] constexpr auto value_or(this auto&& self, Or&& or_value) -> decltype(auto) {
-        return self.has_value() ? *self.get() : static_cast<T>(std::forward<Or>(or_value));
+    template <std::convertible_to<T> Or>
+    [[nodiscard]] constexpr auto value_or(Or&& or_value) const -> T {
+        return has_value() ? value_ : static_cast<T>(std::forward<Or>(or_value));
     }
 
     [[nodiscard]] constexpr operator std::optional<T>() const noexcept {
@@ -237,7 +266,7 @@ constexpr auto safe_eq(const option<T>& a, const option<T>& b) noexcept -> bool 
 }
 
 // An efficient optional representation of boolean values
-class tribool {
+class tribool : public detail::monadic {
   public:
     // cppcheck-suppress-begin noExplicitConstructor
     constexpr tribool() noexcept : value_{NO_VALUE} {}
@@ -271,13 +300,15 @@ class tribool {
 
     template <std::convertible_to<bool> Or>
         requires CopyConstructible<Or>
-    [[nodiscard]] constexpr auto value_or(Or&& or_value) -> bool {
+    [[nodiscard]] constexpr auto value_or(Or&& or_value) const -> bool {
         return has_value() ? get() : static_cast<bool>(std::forward<Or>(or_value));
     }
 
     [[nodiscard]] constexpr operator std::optional<bool>() const noexcept {
         return has_value() ? std::optional<bool>{value_} : none;
     }
+
+    [[nodiscard]] constexpr auto operator==(const tribool&) const noexcept -> bool = default;
 
   private:
     static constexpr u8 NO_VALUE{3};
@@ -287,7 +318,7 @@ class tribool {
 };
 
 // A minimal, zero-cost optional usize wrapper
-class opt_size {
+class opt_size : public detail::monadic {
   public:
     constexpr opt_size() noexcept = default;
 
@@ -322,6 +353,10 @@ class opt_size {
     }
 
     [[nodiscard]] constexpr auto operator*() const noexcept -> usize { return get(); }
+
+    [[nodiscard]] constexpr auto value_or(usize or_value) const noexcept -> usize {
+        return has_value() ? value_ : or_value;
+    }
 
     [[nodiscard]] constexpr operator std::optional<usize>() const noexcept {
         return has_value() ? std::optional<usize>{value_} : none;

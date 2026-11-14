@@ -114,13 +114,18 @@ class variant {
     }
     // NOLINTEND
 
-    [[nodiscard]] auto                       index() const noexcept -> usize { return index_; }
-    template <typename T> [[nodiscard]] auto is() const noexcept -> bool {
+    [[nodiscard]] auto index() const noexcept -> usize { return index_; }
+
+    // Checks if T is the active alternative. T must be one of the variant's alternatives.
+    template <typename T>
+        requires(index_of<T> < N)
+    [[nodiscard]] auto is() const noexcept -> bool {
         return index_ == static_cast<index_type>(index_of<T>);
     }
 
     // Asserts that the requested type is currently active
     template <typename T, typename Self>
+        requires(index_of<T> < N)
     [[nodiscard]] auto as(this Self&& self) noexcept -> decltype(auto) {
         ASSERT(self.template is<T>(), "Variant::as<T> called on inactive alternative");
         if constexpr (RValueReference<Self>) {
@@ -132,6 +137,7 @@ class variant {
 
     // Returns a reference to the active type if T matches
     template <typename T, typename Self>
+        requires(index_of<T> < N)
     [[nodiscard]] auto as_opt(this Self& self) noexcept -> option<const_dispatch_t<Self, T>&> {
         if (!self.template is<T>()) { return none; }
         return {object_at<T>(self.storage_)};
